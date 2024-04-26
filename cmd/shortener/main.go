@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 )
 
@@ -17,9 +15,6 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == http.MethodGet {
-		param := req.PathValue("id")
-		fmt.Printf("Greeting received: %v\n", param)
-		fmt.Printf("Greeting received: %v\n", req.URL.String())
 		res.WriteHeader(http.StatusTemporaryRedirect)
 		res.Write([]byte("Location: https://practicum.yandex.ru/"))
 	}
@@ -69,8 +64,6 @@ func main() {
 
 	mux.HandleFunc("/test/{id}", urlHandler)
 	mux.HandleFunc("/", urlHandler)
-
-	mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test/123", nil))
 
 	err := http.ListenAndServe(`:8080`, mux)
 
