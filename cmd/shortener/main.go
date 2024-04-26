@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -20,25 +19,6 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == http.MethodPost {
-		headerContentTtype := req.Header.Get("Content-Type")
-
-		if headerContentTtype != "text/plain" {
-			http.Error(res, "Content-Type is not text/plain", http.StatusUnsupportedMediaType)
-			return
-		}
-
-		if req.ContentLength == 0 {
-			http.Error(res, "No URL posted", http.StatusBadRequest)
-			return
-		}
-
-		_, err := io.ReadAll(req.Body)
-
-		if err != nil {
-			http.Error(res, "Error parse body", http.StatusBadRequest)
-			return
-		}
-
 		str := "http://localhost:8080/" + randomString(7)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
