@@ -1,10 +1,13 @@
 package main
 
 import (
+	"io"
 	"math/rand"
 	"net/http"
 	"strings"
 )
+
+var SavedUrl []byte
 
 func urlHandler(res http.ResponseWriter, req *http.Request) {
 
@@ -15,10 +18,19 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodGet {
 		res.WriteHeader(http.StatusTemporaryRedirect)
-		res.Write([]byte("Location: https://practicum.yandex.ru/"))
+		res.Header().Set("Location", string(SavedUrl))
+
 	}
 
 	if req.Method == http.MethodPost {
+		u, err := io.ReadAll(req.Body)
+
+		if err != nil {
+			http.Error(res, "Empty String!", http.StatusBadRequest)
+		}
+
+		SavedUrl = u
+
 		str := "http://localhost:8080/" + randomString(7)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
