@@ -7,9 +7,7 @@ import (
 	"strings"
 )
 
-type SavedUrl []byte
-
-var Url SavedUrl
+var storage map[string]string
 
 func urlHandler(res http.ResponseWriter, req *http.Request) {
 
@@ -19,8 +17,10 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == http.MethodGet {
+		id := strings.Replace(req.URL.Path, "/", "", 1)
 		res.WriteHeader(http.StatusTemporaryRedirect)
-		res.Header().Set("Location", string(Url))
+		res.Header().Set("Location", string(storage[id]))
+		println(storage[id])
 	}
 
 	if req.Method == http.MethodPost {
@@ -30,9 +30,11 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, "Empty String!", http.StatusBadRequest)
 		}
 
-		Url = u
+		rndString := randomString(7)
 
-		str := "http://localhost:8080/" + randomString(7)
+		storage[rndString] = string(u)
+
+		str := "http://localhost:8080/" + rndString
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(str))
@@ -53,6 +55,7 @@ func randomString(n int) string {
 }
 
 func main() {
+	storage = make(map[string]string)
 
 	mux := http.NewServeMux()
 
