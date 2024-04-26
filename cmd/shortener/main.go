@@ -20,7 +20,6 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 		id := strings.Replace(req.URL.Path, "/", "", 1)
 		res.WriteHeader(http.StatusTemporaryRedirect)
 		res.Header().Set("Location", string(storage[id]))
-		println(storage[id])
 	}
 
 	if req.Method == http.MethodPost {
