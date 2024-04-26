@@ -40,7 +40,7 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 		}
 
 		str := "http://localhost:8080/" + randomString(7)
-		res.Header().Set("Content-type", "text/plain")
+		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(str))
 
