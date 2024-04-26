@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+type SavedUrl []byte
+
+var Url SavedUrl
+
 func urlHandler(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method != http.MethodGet && req.Method != http.MethodPost {
@@ -16,15 +20,17 @@ func urlHandler(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodGet {
 		res.WriteHeader(http.StatusTemporaryRedirect)
-		res.Header().Set("Location", "https://practicum.yandex.ru/")
+		res.Header().Set("Location", string(Url))
 	}
 
 	if req.Method == http.MethodPost {
-		_, err := io.ReadAll(req.Body)
+		u, err := io.ReadAll(req.Body)
 
 		if err != nil {
 			http.Error(res, "Empty String!", http.StatusBadRequest)
 		}
+
+		Url = u
 
 		str := "http://localhost:8080/" + randomString(7)
 		res.Header().Set("Content-Type", "text/plain")
