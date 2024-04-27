@@ -10,11 +10,6 @@ import (
 var storage map[string]string
 
 func getHandler(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
-		return
-	}
-
 	id := strings.Replace(req.URL.Path, "/", "", 1)
 
 	url, err := storage[id]
@@ -27,11 +22,6 @@ func getHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func postHandler(res http.ResponseWriter, req *http.Request) {
-
-	if req.Method != http.MethodPost {
-		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
-		return
-	}
 
 	defer req.Body.Close()
 
@@ -56,6 +46,22 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 
 }
 
+func checkHandler(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet || req.Method != http.MethodPost {
+		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if req.Method == http.MethodPost {
+		postHandler(res, req)
+	}
+
+	if req.Method == http.MethodGet {
+		getHandler(res, req)
+	}
+
+}
+
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func randomString(n int) string {
@@ -72,8 +78,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/{id}", getHandler)
-	mux.HandleFunc("/", postHandler)
+	mux.HandleFunc("/", checkHandler)
 
 	err := http.ListenAndServe(`:8080`, mux)
 
