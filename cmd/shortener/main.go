@@ -9,36 +9,50 @@ import (
 
 var storage map[string]string
 
-func urlHandler(res http.ResponseWriter, req *http.Request) {
-
-	if req.Method != http.MethodGet && req.Method != http.MethodPost {
+func getHandler(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
 		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
 		return
 	}
 
-	if req.Method == http.MethodGet {
-		id := strings.Replace(req.URL.Path, "/", "", 1)
+	id := strings.Replace(req.URL.Path, "/", "", 1)
 
-		http.Redirect(res, req, string(storage[id]), http.StatusTemporaryRedirect)
+	url, err := storage[id]
+
+	if !err {
+		http.Error(res, "Not Found!", http.StatusNotFound)
 	}
 
-	if req.Method == http.MethodPost {
-		u, err := io.ReadAll(req.Body)
+	http.Redirect(res, req, string(url), http.StatusTemporaryRedirect)
+}
 
-		if err != nil {
-			http.Error(res, "Empty String!", http.StatusBadRequest)
-		}
+func postHandler(res http.ResponseWriter, req *http.Request) {
 
-		rndString := randomString(7)
-
-		storage[rndString] = string(u)
-
-		str := "http://localhost:8080/" + rndString
-		res.Header().Set("Content-Type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(str))
-
+	if req.Method != http.MethodPost {
+		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
+		return
 	}
+
+	defer req.Body.Close()
+
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty String!", http.StatusBadRequest)
+	}
+
+	u, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		http.Error(res, "Something went wrong!", http.StatusBadRequest)
+	}
+
+	rndString := randomString(7)
+
+	storage[rndString] = string(u)
+
+	str := "http://localhost:8080/" + rndString
+	res.Header().Set("Content-Type", "text/plain")
+	res.WriteHeader(http.StatusCreated)
+	res.Write([]byte(str))
 
 }
 
@@ -58,8 +72,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/test/{id}", urlHandler)
-	mux.HandleFunc("/", urlHandler)
+	mux.HandleFunc("/{id}", getHandler)
+	mux.HandleFunc("/", postHandler)
 
 	err := http.ListenAndServe(`:8080`, mux)
 
