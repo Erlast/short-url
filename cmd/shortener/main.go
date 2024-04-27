@@ -47,7 +47,7 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func checkHandler(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet || req.Method != http.MethodPost {
+	if req.Method != http.MethodGet && req.Method != http.MethodPost {
 		http.Error(res, "Method not allowed!", http.StatusMethodNotAllowed)
 		return
 	}
