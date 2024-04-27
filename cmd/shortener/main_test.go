@@ -30,6 +30,7 @@ func TestOkPostHandler(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
 	defer res.Body.Close()
+
 	resBody, err := io.ReadAll(res.Body)
 
 	require.NoError(t, err)
@@ -48,6 +49,8 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	postHandler(w, request)
 
 	res := w.Result()
+
+	defer res.Body.Close()
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
@@ -69,6 +72,8 @@ func TestGetHandler(t *testing.T) {
 
 	res := w.Result()
 
+	defer res.Body.Close()
+
 	assert.Equal(t, http.StatusTemporaryRedirect, res.StatusCode)
 	assert.Equal(t, "http://somelink.ru", res.Header.Get("Location"))
 }
@@ -88,6 +93,8 @@ func TestNotFoundGetHandler(t *testing.T) {
 	getHandler(w, request)
 
 	res := w.Result()
+
+	defer res.Body.Close()
 
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 }
