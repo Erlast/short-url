@@ -19,7 +19,7 @@ func getHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Not Found!", http.StatusNotFound)
 	}
 
-	http.Redirect(res, req, string(url), http.StatusTemporaryRedirect)
+	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }
 
 func postHandler(res http.ResponseWriter, req *http.Request) {
@@ -86,9 +86,9 @@ func main() {
 	storage = make(map[string]string)
 
 	r := chi.NewRouter()
-	r.Get("/{id}", getHandler)
+	r.Get("/{id}", checkHandler)
 
-	r.Post("/", postHandler)
+	r.Post("/", checkHandler)
 
 	err := http.ListenAndServe(`:8080`, r)
 
