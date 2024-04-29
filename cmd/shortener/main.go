@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var storage map[string]string
@@ -76,11 +78,12 @@ func randomString(n int) string {
 func main() {
 	storage = make(map[string]string)
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
+	r.Get("/{id}", getHandler)
 
-	mux.HandleFunc("/", checkHandler)
+	r.Post("/", postHandler)
 
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`:8080`, r)
 
 	if err != nil {
 		panic(err)
