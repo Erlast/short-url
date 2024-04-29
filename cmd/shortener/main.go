@@ -27,7 +27,7 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-
+			http.Error(res, "Enable to close body!", http.StatusBadRequest)
 		}
 	}(req.Body)
 
