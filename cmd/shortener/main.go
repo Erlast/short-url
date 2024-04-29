@@ -25,7 +25,12 @@ func getHandler(res http.ResponseWriter, req *http.Request) {
 
 func postHandler(res http.ResponseWriter, req *http.Request) {
 
-	defer req.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(req.Body)
 
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -44,7 +49,10 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 	str := "http://localhost:8080/" + rndString
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(str))
+	_, err = res.Write([]byte(str))
+	if err != nil {
+		return
+	}
 
 }
 
