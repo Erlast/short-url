@@ -1,12 +1,11 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
 	"net/http"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 )
 
 var storage map[string]string
