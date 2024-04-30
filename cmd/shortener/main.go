@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Erlast/short-url.git/internal/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
@@ -45,7 +46,8 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 
 	storage[rndString] = string(u)
 
-	str := "http://localhost:8080/" + rndString
+	str := config.FlagBaseUrl + "/" + rndString
+
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(str))
@@ -83,14 +85,18 @@ func randomString(n int) string {
 }
 
 func main() {
+
+	config.ParseFlags()
+
 	storage = make(map[string]string)
 
 	r := chi.NewRouter()
+
 	r.Get("/{id}", checkHandler)
 
 	r.Post("/", checkHandler)
 
-	err := http.ListenAndServe(`:8080`, r)
+	err := http.ListenAndServe(config.FlagRunAddr, r)
 
 	if err != nil {
 		panic(err)
