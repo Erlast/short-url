@@ -4,14 +4,22 @@ import (
 	"flag"
 )
 
-var FlagRunAddr string
-var FlagBaseUrl string
+type Cfg struct {
+	FlagRunAddr string
+	FlagBaseUrl string
+}
 
-func ParseFlags() {
+func ParseFlags() Cfg {
+	Config := Cfg{
+		":8080",
+		"http://localhost:8080",
+	}
 
-	flag.StringVar(&FlagRunAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&FlagBaseUrl, "b", "localhost:8080", "base URL")
+	flag.StringVar(&Config.FlagRunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&Config.FlagBaseUrl, "b", "localhost:8080", "base URL")
 
 	flag.Parse()
+
+	return Config
 
 }

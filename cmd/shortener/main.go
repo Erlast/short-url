@@ -10,6 +10,7 @@ import (
 )
 
 var storage map[string]string
+var conf config.Cfg
 
 func getHandler(res http.ResponseWriter, req *http.Request) {
 	id := strings.Replace(req.URL.Path, "/", "", 1)
@@ -46,7 +47,7 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 
 	storage[rndString] = string(u)
 
-	str := config.FlagBaseUrl + "/" + rndString
+	str := conf.FlagBaseUrl + "/" + rndString
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
@@ -86,7 +87,7 @@ func randomString(n int) string {
 
 func main() {
 
-	config.ParseFlags()
+	conf = config.ParseFlags()
 
 	storage = make(map[string]string)
 
@@ -96,7 +97,7 @@ func main() {
 
 	r.Post("/", checkHandler)
 
-	err := http.ListenAndServe(config.FlagRunAddr, r)
+	err := http.ListenAndServe(conf.FlagRunAddr, r)
 
 	if err != nil {
 		panic(err)
