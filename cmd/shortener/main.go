@@ -47,12 +47,13 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 
 	storage[rndString] = string(u)
 
-	str := "http://" + conf.FlagBaseURL + "/" + rndString
+	str := conf.FlagBaseURL + "/" + rndString
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(str))
 	if err != nil {
+		http.Error(res, "Something went wrong!", http.StatusBadRequest)
 		return
 	}
 
