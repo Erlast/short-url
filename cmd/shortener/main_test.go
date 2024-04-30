@@ -29,7 +29,12 @@ func TestOkPostHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
-	defer res.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(res.Body)
 
 	resBody, err := io.ReadAll(res.Body)
 
