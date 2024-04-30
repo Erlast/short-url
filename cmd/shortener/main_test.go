@@ -49,12 +49,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 
 	res := w.Result()
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			return
-		}
-	}(res.Body)
+	defer res.Body.Close()
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
@@ -76,12 +71,7 @@ func TestGetHandler(t *testing.T) {
 
 	res := w.Result()
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			return
-		}
-	}(res.Body)
+	defer res.Body.Close()
 
 	assert.Equal(t, http.StatusTemporaryRedirect, res.StatusCode)
 	assert.Equal(t, "http://somelink.ru", res.Header.Get("Location"))
@@ -103,12 +93,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	res := w.Result()
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			return
-		}
-	}(res.Body)
+	defer res.Body.Close()
 
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 }
