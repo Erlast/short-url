@@ -15,7 +15,7 @@ func ParseFlags() Cfg {
 		"http://localhost:8080",
 	}
 
-	flag.StringVar(&Config.FlagRunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&Config.FlagRunAddr, "a", ":8080", "port to run server")
 	flag.StringVar(&Config.FlagBaseURL, "b", "localhost:8080", "base URL")
 
 	flag.Parse()
