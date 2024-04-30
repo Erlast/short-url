@@ -47,7 +47,7 @@ func postHandler(res http.ResponseWriter, req *http.Request) {
 
 	storage[rndString] = string(u)
 
-	str := conf.FlagBaseURL + "/" + rndString
+	str := "http://" + conf.FlagBaseURL + "/" + rndString
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
