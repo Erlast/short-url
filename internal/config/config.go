@@ -6,7 +6,7 @@ import (
 
 type Cfg struct {
 	FlagRunAddr string
-	FlagBaseUrl string
+	FlagBaseURL string
 }
 
 func ParseFlags() Cfg {
@@ -16,7 +16,7 @@ func ParseFlags() Cfg {
 	}
 
 	flag.StringVar(&Config.FlagRunAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&Config.FlagBaseUrl, "b", "localhost:8080", "base URL")
+	flag.StringVar(&Config.FlagBaseURL, "b", "localhost:8080", "base URL")
 
 	flag.Parse()
 
