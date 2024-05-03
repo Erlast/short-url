@@ -3,7 +3,6 @@ package config
 import (
 	"flag"
 	"github.com/caarlos0/env/v11"
-	"log"
 )
 
 type Cfg struct {
@@ -16,24 +15,20 @@ type envCfg struct {
 	baseURL string `env:"BASE_URL"`
 }
 
-func ParseFlags() Cfg {
+func ParseFlags() (Cfg, error) {
 	Config := Cfg{
 		":8080",
 		"http://localhost:8080",
 	}
 
-	flag.StringVar(&Config.FlagRunAddr, "a", ":8080", "port to run server")
-	flag.StringVar(&Config.FlagBaseURL, "b", "http://localhost:8080", "base URL")
+	flag.StringVar(&Config.FlagRunAddr, "a", Config.FlagRunAddr, "port to run server")
+	flag.StringVar(&Config.FlagBaseURL, "b", Config.FlagBaseURL, "base URL")
 
 	flag.Parse()
 
 	var cfg envCfg
 
 	err := env.Parse(&cfg)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	if len(cfg.runAddr) != 0 {
 		Config.FlagRunAddr = cfg.runAddr
@@ -43,6 +38,6 @@ func ParseFlags() Cfg {
 		Config.FlagBaseURL = cfg.baseURL
 	}
 
-	return Config
+	return Config, err
 
 }

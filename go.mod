@@ -1,6 +1,6 @@
 module github.com/Erlast/short-url.git
 
-go 1.21.9
+go 1.22.0
 
 require (
 	github.com/caarlos0/env/v11 v11.0.0

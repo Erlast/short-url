@@ -2,28 +2,39 @@ package main
 
 import (
 	"bytes"
-	"io"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Erlast/short-url.git/internal/app"
+	"github.com/Erlast/short-url.git/internal/config"
 )
 
 func TestOkPostHandler(t *testing.T) {
+	conf, err := config.ParseFlags()
+
+	if err != nil {
+		return
+	}
+
+	app.Init(app.Settings{
+		Storage: make(map[string]string),
+		Conf:    conf,
+	})
 
 	body := "http://somelink.ru"
-
-	storage = make(map[string]string)
 
 	request := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(body)))
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	postHandler(w, request)
+	app.PostHandler(w, request)
 
 	res := w.Result()
 
@@ -45,7 +56,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	postHandler(w, request)
+	app.PostHandler(w, request)
 
 	res := w.Result()
 
@@ -56,40 +67,43 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	storage = make(map[string]string)
 
-	rndString := randomString(7)
+	rndString := app.RandomString(7)
 
-	storage[rndString] = "http://somelink.ru"
+	app.Init(app.Settings{
+		Storage: map[string]string{rndString: "http://somelink.ru"},
+	})
+
+	router := chi.NewRouter()
+
+	router.Get("/{id}", app.GetHandler)
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, nil)
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	getHandler(w, request)
 
-	res := w.Result()
+	router.ServeHTTP(w, request)
 
-	defer res.Body.Close()
-
-	assert.Equal(t, http.StatusTemporaryRedirect, res.StatusCode)
-	assert.Equal(t, "http://somelink.ru", res.Header.Get("Location"))
+	assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+	assert.Equal(t, "http://somelink.ru", w.Header().Get("Location"))
 }
 
 func TestNotFoundGetHandler(t *testing.T) {
-	storage = make(map[string]string)
 
-	rndString := randomString(7)
+	rndString := app.RandomString(7)
 
-	storage[randomString(7)] = "http://somelink.ru"
+	app.Init(app.Settings{
+		Storage: map[string]string{app.RandomString(7): "http://somelink.ru"},
+	})
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, nil)
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	getHandler(w, request)
+	app.GetHandler(w, request)
 
 	res := w.Result()
 
