@@ -17,7 +17,9 @@ cmd/shortener/shortener
 
 # Dependency directories (remove the comment below to include it)
 vendor/
+golangci-lint/
 
 # IDEs directories
 .idea
 .vscode
+

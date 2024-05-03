@@ -1,21 +1,17 @@
 package main
 
 import (
-	"github.com/Erlast/short-url.git/internal/config"
-	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Erlast/short-url.git/internal/app"
+	"github.com/Erlast/short-url.git/internal/config"
 )
 
 func main() {
-
-	conf, err := config.ParseFlags()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	conf := config.ParseFlags()
 
 	app.Init(app.Settings{
 		Storage: make(map[string]string),
@@ -28,7 +24,7 @@ func main() {
 
 	r.Post("/", app.PostHandler)
 
-	err = http.ListenAndServe(conf.FlagRunAddr, r)
+	err := http.ListenAndServe(conf.FlagRunAddr, r)
 
 	if err != nil {
 		log.Fatal(err)

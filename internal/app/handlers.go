@@ -1,11 +1,13 @@
 package app
 
 import (
-	"github.com/Erlast/short-url.git/internal/config"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/Erlast/short-url.git/internal/config"
 )
 
 type Settings struct {
@@ -20,7 +22,6 @@ func Init(s Settings) {
 }
 
 func GetHandler(res http.ResponseWriter, req *http.Request) {
-
 	id := chi.URLParam(req, "id")
 
 	originalURL, ok := settings.Storage[id]
@@ -34,8 +35,12 @@ func GetHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func PostHandler(res http.ResponseWriter, req *http.Request) {
+	err := req.Body.Close()
 
-	defer req.Body.Close()
+	if err != nil {
+		http.Error(res, "Empty String!", http.StatusInternalServerError)
+		return
+	}
 
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -46,9 +51,12 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		http.Error(res, "Something went wrong!", http.StatusBadRequest)
+		return
 	}
 
-	rndString := GenerateRandom(7)
+	const lenString = 7
+
+	rndString := GenerateRandom(lenString)
 
 	settings.Storage[rndString] = string(u)
 
@@ -67,7 +75,6 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func GenerateRandom(ln int) string {

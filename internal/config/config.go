@@ -2,6 +2,8 @@ package config
 
 import (
 	"flag"
+	"fmt"
+
 	"github.com/caarlos0/env/v11"
 )
 
@@ -15,7 +17,7 @@ type envCfg struct {
 	baseURL string `env:"BASE_URL"`
 }
 
-func ParseFlags() (Cfg, error) {
+func ParseFlags() Cfg {
 	Config := Cfg{
 		":8080",
 		"http://localhost:8080",
@@ -28,7 +30,9 @@ func ParseFlags() (Cfg, error) {
 
 	var cfg envCfg
 
-	err := env.Parse(&cfg)
+	if err := env.Parse(&cfg); err != nil {
+		fmt.Println("failed:", err)
+	}
 
 	if len(cfg.runAddr) != 0 {
 		Config.FlagRunAddr = cfg.runAddr
@@ -38,6 +42,5 @@ func ParseFlags() (Cfg, error) {
 		Config.FlagBaseURL = cfg.baseURL
 	}
 
-	return Config, err
-
+	return Config
 }
