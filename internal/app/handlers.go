@@ -35,13 +35,6 @@ func GetHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func PostHandler(res http.ResponseWriter, req *http.Request) {
-	err := req.Body.Close()
-
-	if err != nil {
-		http.Error(res, "Empty String!", http.StatusInternalServerError)
-		return
-	}
-
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -51,6 +44,13 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		http.Error(res, "Something went wrong!", http.StatusBadRequest)
+		return
+	}
+
+	err = req.Body.Close()
+
+	if err != nil {
+		http.Error(res, "Empty String!", http.StatusInternalServerError)
 		return
 	}
 
