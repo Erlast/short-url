@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Erlast/short-url.git/internal/config"
-	"github.com/Erlast/short-url.git/internal/handlers"
-	"github.com/Erlast/short-url.git/internal/helpers"
-	"github.com/Erlast/short-url.git/internal/storages"
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/handlers"
+	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
 func TestOkPostHandler(t *testing.T) {

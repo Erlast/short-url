@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Erlast/short-url.git/internal/config"
-	"github.com/Erlast/short-url.git/internal/helpers"
-	"github.com/Erlast/short-url.git/internal/storages"
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
 type Settings struct {
