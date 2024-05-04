@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"io"
@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Erlast/short-url.git/internal/config"
+	"github.com/Erlast/short-url.git/internal/helpers"
 )
 
 type Settings struct {
@@ -78,7 +79,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func GenerateRandom(ln int) string {
-	rndString := RandomString(ln)
+	rndString := helpers.RandomString(ln)
 
 	if _, ok := settings.Storage[rndString]; ok {
 		GenerateRandom(ln)

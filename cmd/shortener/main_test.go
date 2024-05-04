@@ -11,14 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Erlast/short-url.git/internal/app"
 	"github.com/Erlast/short-url.git/internal/config"
+	"github.com/Erlast/short-url.git/internal/handlers"
+	"github.com/Erlast/short-url.git/internal/helpers"
 )
 
 func TestOkPostHandler(t *testing.T) {
 	conf := config.ParseFlags()
 
-	app.Init(app.Settings{
+	handlers.Init(handlers.Settings{
 		Storage: make(map[string]string),
 		Conf:    conf,
 	})
@@ -30,7 +31,7 @@ func TestOkPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	app.PostHandler(w, request)
+	handlers.PostHandler(w, request)
 
 	res := w.Result()
 
@@ -54,7 +55,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	app.PostHandler(w, request)
+	handlers.PostHandler(w, request)
 
 	res := w.Result()
 
@@ -68,15 +69,15 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	rndString := app.RandomString(7)
+	rndString := helpers.RandomString(7)
 
-	app.Init(app.Settings{
+	handlers.Init(handlers.Settings{
 		Storage: map[string]string{rndString: "http://somelink.ru"},
 	})
 
 	router := chi.NewRouter()
 
-	router.Get("/{id}", app.GetHandler)
+	router.Get("/{id}", handlers.GetHandler)
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
@@ -91,10 +92,10 @@ func TestGetHandler(t *testing.T) {
 }
 
 func TestNotFoundGetHandler(t *testing.T) {
-	rndString := app.RandomString(7)
+	rndString := helpers.RandomString(7)
 
-	app.Init(app.Settings{
-		Storage: map[string]string{app.RandomString(7): "http://somelink.ru"},
+	handlers.Init(handlers.Settings{
+		Storage: map[string]string{helpers.RandomString(7): "http://somelink.ru"},
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
@@ -102,7 +103,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	app.GetHandler(w, request)
+	handlers.GetHandler(w, request)
 
 	res := w.Result()
 

@@ -6,23 +6,23 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Erlast/short-url.git/internal/app"
 	"github.com/Erlast/short-url.git/internal/config"
+	"github.com/Erlast/short-url.git/internal/handlers"
 )
 
 func main() {
 	conf := config.ParseFlags()
 
-	app.Init(app.Settings{
+	handlers.Init(handlers.Settings{
 		Storage: make(map[string]string),
 		Conf:    conf,
 	})
 
 	r := chi.NewRouter()
 
-	r.Get("/{id}", app.GetHandler)
+	r.Get("/{id}", handlers.GetHandler)
 
-	r.Post("/", app.PostHandler)
+	r.Post("/", handlers.PostHandler)
 
 	err := http.ListenAndServe(conf.FlagRunAddr, r)
 
