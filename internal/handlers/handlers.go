@@ -9,23 +9,27 @@ import (
 
 	"github.com/Erlast/short-url.git/internal/config"
 	"github.com/Erlast/short-url.git/internal/helpers"
+	"github.com/Erlast/short-url.git/internal/storages"
 )
 
 type Settings struct {
-	Storage map[string]string
+	Storage storages.Storage
 	Conf    config.Cfg
 }
 
 var settings Settings
 
-func Init(s Settings) {
-	settings = s
+func Init(s storages.Storage, c config.Cfg) {
+	settings = Settings{
+		Storage: s,
+		Conf:    c,
+	}
 }
 
 func GetHandler(res http.ResponseWriter, req *http.Request) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, ok := settings.Storage[id]
+	originalURL, ok := settings.Storage.Urls[id]
 
 	if !ok {
 		http.Error(res, "Not Found!", http.StatusNotFound)
@@ -59,7 +63,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 
 	rndString := GenerateRandom(lenString)
 
-	settings.Storage[rndString] = string(u)
+	settings.Storage.Urls[rndString] = string(u)
 
 	str, err := url.JoinPath(settings.Conf.FlagBaseURL, "/", rndString)
 
@@ -81,7 +85,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 func GenerateRandom(ln int) string {
 	rndString := helpers.RandomString(ln)
 
-	if _, ok := settings.Storage[rndString]; ok {
+	if _, ok := settings.Storage.Urls[rndString]; ok {
 		GenerateRandom(ln)
 	}
 

@@ -8,15 +8,15 @@ import (
 
 	"github.com/Erlast/short-url.git/internal/config"
 	"github.com/Erlast/short-url.git/internal/handlers"
+	"github.com/Erlast/short-url.git/internal/storages"
 )
 
 func main() {
 	conf := config.ParseFlags()
 
-	handlers.Init(handlers.Settings{
-		Storage: make(map[string]string),
-		Conf:    conf,
-	})
+	store := storages.Init(make(map[string]string))
+
+	handlers.Init(store, conf)
 
 	r := chi.NewRouter()
 

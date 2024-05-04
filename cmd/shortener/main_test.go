@@ -14,15 +14,15 @@ import (
 	"github.com/Erlast/short-url.git/internal/config"
 	"github.com/Erlast/short-url.git/internal/handlers"
 	"github.com/Erlast/short-url.git/internal/helpers"
+	"github.com/Erlast/short-url.git/internal/storages"
 )
 
 func TestOkPostHandler(t *testing.T) {
 	conf := config.ParseFlags()
 
-	handlers.Init(handlers.Settings{
-		Storage: make(map[string]string),
-		Conf:    conf,
-	})
+	store := storages.Init(make(map[string]string))
+
+	handlers.Init(store, conf)
 
 	body := "http://somelink.ru"
 
@@ -71,9 +71,12 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	handlers.Init(handlers.Settings{
-		Storage: map[string]string{rndString: "http://somelink.ru"},
-	})
+	conf := config.Cfg{
+		FlagRunAddr: ":8080",
+		FlagBaseURL: "http://localhost:8080",
+	}
+	store := storages.Init(map[string]string{rndString: "http://somelink.ru"})
+	handlers.Init(store, conf)
 
 	router := chi.NewRouter()
 
@@ -94,9 +97,12 @@ func TestGetHandler(t *testing.T) {
 func TestNotFoundGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	handlers.Init(handlers.Settings{
-		Storage: map[string]string{helpers.RandomString(7): "http://somelink.ru"},
-	})
+	conf := config.Cfg{
+		FlagRunAddr: ":8080",
+		FlagBaseURL: "http://localhost:8080",
+	}
+	store := storages.Init(map[string]string{helpers.RandomString(7): "http://somelink.ru"})
+	handlers.Init(store, conf)
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
