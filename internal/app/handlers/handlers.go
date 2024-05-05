@@ -2,44 +2,33 @@ package handlers
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Erlast/short-url.git/internal/app/config"
+	config "github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-type Settings struct {
-	Storage storages.Storage
-	Conf    config.Cfg
-}
+const lenString = 7
 
-var settings Settings
-
-func Init(s storages.Storage, c config.Cfg) {
-	settings = Settings{
-		Storage: s,
-		Conf:    c,
-	}
-}
-
-func GetHandler(res http.ResponseWriter, req *http.Request) {
+func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, ok := settings.Storage.Urls[id]
+	originalURL, ok := storage.GetByID(id)
 
-	if !ok {
-		http.Error(res, "Not Found!", http.StatusNotFound)
+	if ok != nil {
+		http.Error(res, "Not found", http.StatusNotFound)
 		return
 	}
 
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
-func PostHandler(res http.ResponseWriter, req *http.Request) {
+func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage, config *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -52,20 +41,11 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = req.Body.Close()
+	rndString := generateRandom(lenString, storage)
 
-	if err != nil {
-		http.Error(res, "Empty String!", http.StatusInternalServerError)
-		return
-	}
+	storage.SaveURL(rndString, string(u))
 
-	const lenString = 7
-
-	rndString := GenerateRandom(lenString)
-
-	settings.Storage.Urls[rndString] = string(u)
-
-	str, err := url.JoinPath(settings.Conf.FlagBaseURL, "/", rndString)
+	str, err := url.JoinPath(config.GetBaseURL(), "/", rndString)
 
 	if err != nil {
 		http.Error(res, "Не удалось сформировать путь", http.StatusBadRequest)
@@ -82,11 +62,18 @@ func PostHandler(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GenerateRandom(ln int) string {
+func generateRandom(ln int, storage *storages.Storage) string {
 	rndString := helpers.RandomString(ln)
 
-	if _, ok := settings.Storage.Urls[rndString]; ok {
-		GenerateRandom(ln)
+	for range 3 {
+		if _, ok := storage.GetByID(rndString); ok == nil {
+			break
+		}
+		rndString = helpers.RandomString(ln)
+	}
+
+	if _, ok := storage.GetByID(rndString); ok != nil {
+		log.Fatalf("Something went wrong!")
 	}
 
 	return rndString

@@ -4,27 +4,19 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/Erlast/short-url.git/internal/app/config"
-	"github.com/Erlast/short-url.git/internal/app/handlers"
+	"github.com/Erlast/short-url.git/internal/app/routes"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
 func main() {
 	conf := config.ParseFlags()
 
-	store := storages.Init(make(map[string]string))
+	store := storages.Init()
 
-	handlers.Init(store, conf)
+	r := routes.Init(store, conf)
 
-	r := chi.NewRouter()
-
-	r.Get("/{id}", handlers.GetHandler)
-
-	r.Post("/", handlers.PostHandler)
-
-	err := http.ListenAndServe(conf.FlagRunAddr, r)
+	err := http.ListenAndServe(conf.GetRunAddr(), r)
 
 	if err != nil {
 		log.Fatal(err)

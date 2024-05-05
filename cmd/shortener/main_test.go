@@ -20,9 +20,7 @@ import (
 func TestOkPostHandler(t *testing.T) {
 	conf := config.ParseFlags()
 
-	store := storages.Init(make(map[string]string))
-
-	handlers.Init(store, conf)
+	store := storages.Init()
 
 	body := "http://somelink.ru"
 
@@ -31,7 +29,7 @@ func TestOkPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.PostHandler(w, request)
+	handlers.PostHandler(w, request, store, conf)
 
 	res := w.Result()
 
@@ -50,12 +48,16 @@ func TestOkPostHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
+	conf := config.ParseFlags()
+
+	store := storages.Init()
+
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.PostHandler(w, request)
+	handlers.PostHandler(w, request, store, conf)
 
 	res := w.Result()
 
@@ -71,16 +73,17 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	conf := config.Cfg{
-		FlagRunAddr: ":8080",
-		FlagBaseURL: "http://localhost:8080",
-	}
-	store := storages.Init(map[string]string{rndString: "http://somelink.ru"})
-	handlers.Init(store, conf)
+	store := storages.Init()
+
+	store.SaveURL(rndString, "http://somelink.ru")
 
 	router := chi.NewRouter()
 
-	router.Get("/{id}", handlers.GetHandler)
+	handleGet := func(res http.ResponseWriter, req *http.Request) {
+		handlers.GetHandler(res, req, store)
+	}
+
+	router.Get("/{id}", handleGet)
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
@@ -97,19 +100,16 @@ func TestGetHandler(t *testing.T) {
 func TestNotFoundGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	conf := config.Cfg{
-		FlagRunAddr: ":8080",
-		FlagBaseURL: "http://localhost:8080",
-	}
-	store := storages.Init(map[string]string{helpers.RandomString(7): "http://somelink.ru"})
-	handlers.Init(store, conf)
+	store := storages.Init()
+
+	store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.GetHandler(w, request)
+	handlers.GetHandler(w, request, store)
 
 	res := w.Result()
 

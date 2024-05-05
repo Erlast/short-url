@@ -2,14 +2,14 @@ package config
 
 import (
 	"flag"
-	"fmt"
+	"log"
 
 	"github.com/caarlos0/env/v11"
 )
 
 type Cfg struct {
-	FlagRunAddr string
-	FlagBaseURL string
+	flagRunAddr string
+	flagBaseURL string
 }
 
 type envCfg struct {
@@ -17,30 +17,46 @@ type envCfg struct {
 	baseURL string `env:"BASE_URL"`
 }
 
-func ParseFlags() Cfg {
-	Config := Cfg{
-		":8080",
-		"http://localhost:8080",
+const defaultRunAddr = ":8080"
+const defaultBaseURL = "http://localhost:8080"
+
+func (conf *Cfg) GetBaseURL() string {
+	return conf.flagBaseURL
+}
+
+func (conf *Cfg) GetRunAddr() string {
+	return conf.flagRunAddr
+}
+
+func ParseFlags() *Cfg {
+	config := &Cfg{
+		flagRunAddr: defaultRunAddr,
+		flagBaseURL: defaultBaseURL,
 	}
 
-	flag.StringVar(&Config.FlagRunAddr, "a", Config.FlagRunAddr, "port to run server")
-	flag.StringVar(&Config.FlagBaseURL, "b", Config.FlagBaseURL, "base URL")
+	if flag.Lookup("a") != nil {
+		flag.StringVar(&config.flagRunAddr, "a", config.GetRunAddr(), "port to run server")
+	}
+
+	if flag.Lookup("b") != nil {
+		flag.StringVar(&config.flagBaseURL, "b", config.GetBaseURL(), "base URL")
+	}
 
 	flag.Parse()
 
 	var cfg envCfg
 
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Println("failed:", err)
+		log.Fatalf("can't parse")
 	}
 
 	if len(cfg.runAddr) != 0 {
-		Config.FlagRunAddr = cfg.runAddr
+		config.flagRunAddr = cfg.runAddr
 	}
 
 	if len(cfg.baseURL) != 0 {
-		Config.FlagBaseURL = cfg.baseURL
+		config.flagBaseURL = cfg.baseURL
 	}
 
-	return Config
+	return config
 }
