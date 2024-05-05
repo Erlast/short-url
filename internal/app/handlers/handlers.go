@@ -28,7 +28,7 @@ func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.St
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
-func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage, config *config.Cfg) {
+func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage, conf *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -45,7 +45,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	storage.SaveURL(rndString, string(u))
 
-	str, err := url.JoinPath(config.GetBaseURL(), "/", rndString)
+	str, err := url.JoinPath(conf.GetBaseURL(), "/", rndString)
 
 	if err != nil {
 		http.Error(res, "Не удалось сформировать путь", http.StatusBadRequest)
