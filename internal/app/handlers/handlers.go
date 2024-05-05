@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
@@ -70,10 +69,6 @@ func generateRandom(ln int, storage *storages.Storage) string {
 			break
 		}
 		rndString = helpers.RandomString(ln)
-	}
-
-	if _, ok := storage.GetByID(rndString); ok != nil {
-		log.Fatalf("Something went wrong!")
 	}
 
 	return rndString

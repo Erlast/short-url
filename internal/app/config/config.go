@@ -34,8 +34,13 @@ func ParseFlags() *Cfg {
 		flagBaseURL: defaultBaseURL,
 	}
 
-	flag.StringVar(&config.flagRunAddr, "a", config.GetRunAddr(), "port to run server")
-	flag.StringVar(&config.flagBaseURL, "b", config.GetBaseURL(), "base URL")
+	if flag.Lookup("a") != nil {
+		flag.StringVar(&config.flagRunAddr, "a", config.GetRunAddr(), "port to run server")
+	}
+
+	if flag.Lookup("b") != nil {
+		flag.StringVar(&config.flagBaseURL, "b", config.GetBaseURL(), "base URL")
+	}
 
 	flag.Parse()
 
