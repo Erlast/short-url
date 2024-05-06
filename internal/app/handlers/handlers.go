@@ -37,14 +37,14 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		http.Error(res, "Something went wrong!", http.StatusBadRequest)
+		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
 		return
 	}
 
 	rndString, err := generateRandom(lenString, storage)
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -53,7 +53,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
 
 	if err != nil {
-		http.Error(res, "Не удалось сформировать путь", http.StatusBadRequest)
+		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
 		return
 	}
 
@@ -71,11 +71,15 @@ func generateRandom(ln int, storage *storages.Storage) (string, error) {
 	rndString := helpers.RandomString(ln)
 
 	for range 3 {
-		if _, ok := storage.GetByID(rndString); ok == nil {
-			return "", errors.New("failed to generate a unique string")
+		if _, err := storage.GetByID(rndString); err != nil {
+			break
 		}
 
 		rndString = helpers.RandomString(ln)
+	}
+
+	if _, err := storage.GetByID(rndString); err == nil {
+		return "", errors.New("failed to generate a unique string")
 	}
 
 	return rndString, nil
