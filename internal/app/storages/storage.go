@@ -1,12 +1,14 @@
 package storages
 
-import "errors"
+import (
+	"fmt"
+)
 
 type Storage struct {
 	urls map[string]string
 }
 
-func Init() *Storage {
+func NewStorage() *Storage {
 	return &Storage{urls: make(map[string]string)}
 }
 
@@ -18,7 +20,7 @@ func (s *Storage) GetByID(id string) (string, error) {
 	originalURL, ok := s.urls[id]
 
 	if !ok {
-		return "", errors.New("not found")
+		return "", fmt.Errorf("short URL %s was not found", id)
 	}
 
 	return originalURL, nil

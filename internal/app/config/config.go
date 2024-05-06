@@ -8,8 +8,8 @@ import (
 )
 
 type Cfg struct {
-	flagRunAddr string
-	flagBaseURL string
+	FlagRunAddr string
+	FlagBaseURL string
 }
 
 type envCfg struct {
@@ -20,26 +20,18 @@ type envCfg struct {
 const defaultRunAddr = ":8080"
 const defaultBaseURL = "http://localhost:8080"
 
-func (conf *Cfg) GetBaseURL() string {
-	return conf.flagBaseURL
-}
-
-func (conf *Cfg) GetRunAddr() string {
-	return conf.flagRunAddr
-}
-
 func ParseFlags() *Cfg {
 	config := &Cfg{
-		flagRunAddr: defaultRunAddr,
-		flagBaseURL: defaultBaseURL,
+		FlagRunAddr: defaultRunAddr,
+		FlagBaseURL: defaultBaseURL,
 	}
 
 	if flag.Lookup("a") == nil {
-		flag.StringVar(&config.flagRunAddr, "a", defaultRunAddr, "port to run server")
+		flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
 	}
 
 	if flag.Lookup("b") == nil {
-		flag.StringVar(&config.flagBaseURL, "b", defaultBaseURL, "base URL")
+		flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
 	}
 
 	flag.Parse()
@@ -50,11 +42,11 @@ func ParseFlags() *Cfg {
 	}
 
 	if len(cfg.runAddr) != 0 {
-		config.flagRunAddr = cfg.runAddr
+		config.FlagRunAddr = cfg.runAddr
 	}
 
 	if len(cfg.baseURL) != 0 {
-		config.flagBaseURL = cfg.baseURL
+		config.FlagBaseURL = cfg.baseURL
 	}
 
 	return config

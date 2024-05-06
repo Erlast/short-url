@@ -12,11 +12,11 @@ import (
 func main() {
 	conf := config.ParseFlags()
 
-	store := storages.Init()
+	store := storages.NewStorage()
 
-	r := routes.Init(store, conf)
+	r := routes.NewRouter(store, conf)
 
-	err := http.ListenAndServe(conf.GetRunAddr(), r)
+	err := http.ListenAndServe(conf.FlagRunAddr, r)
 
 	if err != nil {
 		log.Fatal(err)

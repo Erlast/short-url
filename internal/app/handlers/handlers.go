@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
-	config "github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
@@ -40,11 +41,16 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 		return
 	}
 
-	rndString := generateRandom(lenString, storage)
+	rndString, err := generateRandom(lenString, storage)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	storage.SaveURL(rndString, string(u))
 
-	str, err := url.JoinPath(conf.GetBaseURL(), "/", rndString)
+	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
 
 	if err != nil {
 		http.Error(res, "Не удалось сформировать путь", http.StatusBadRequest)
@@ -61,15 +67,16 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	}
 }
 
-func generateRandom(ln int, storage *storages.Storage) string {
+func generateRandom(ln int, storage *storages.Storage) (string, error) {
 	rndString := helpers.RandomString(ln)
 
 	for range 3 {
 		if _, ok := storage.GetByID(rndString); ok == nil {
-			break
+			return "", errors.New("failed to generate a unique string")
 		}
+
 		rndString = helpers.RandomString(ln)
 	}
 
-	return rndString
+	return rndString, nil
 }

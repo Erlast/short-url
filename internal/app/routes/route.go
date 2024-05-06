@@ -10,7 +10,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func Init(store *storages.Storage, conf *config.Cfg) *chi.Mux {
+func NewRouter(store *storages.Storage, conf *config.Cfg) *chi.Mux {
 	r := chi.NewRouter()
 
 	handleGet := func(res http.ResponseWriter, req *http.Request) {

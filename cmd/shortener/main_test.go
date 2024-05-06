@@ -20,7 +20,7 @@ import (
 func TestOkPostHandler(t *testing.T) {
 	conf := config.ParseFlags()
 
-	store := storages.Init()
+	store := storages.NewStorage()
 
 	body := "http://somelink.ru"
 
@@ -50,7 +50,7 @@ func TestOkPostHandler(t *testing.T) {
 func TestEmptyBodyPostHandler(t *testing.T) {
 	conf := config.ParseFlags()
 
-	store := storages.Init()
+	store := storages.NewStorage()
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
@@ -73,7 +73,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.Init()
+	store := storages.NewStorage()
 
 	store.SaveURL(rndString, "http://somelink.ru")
 
@@ -100,7 +100,7 @@ func TestGetHandler(t *testing.T) {
 func TestNotFoundGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.Init()
+	store := storages.NewStorage()
 
 	store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
 
