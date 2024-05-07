@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -15,6 +15,7 @@ import (
 )
 
 const lenString = 7
+const errorText = "Something went wrong!"
 
 func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
 	id := chi.URLParam(req, "id")
@@ -38,14 +39,16 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
+		log.Println(errorText)
+		http.Error(res, errorText, http.StatusInternalServerError)
 		return
 	}
 
 	rndString, err := generateRandom(lenString, storage)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(errorText)
+		http.Error(res, errorText, http.StatusInternalServerError)
 		return
 	}
 
@@ -63,20 +66,18 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	_, err = res.Write([]byte(str))
 	if err != nil {
-		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(res, errorText, http.StatusInternalServerError)
 		return
 	}
 }
 
 func generateRandom(ln int, storage *storages.Storage) (string, error) {
-	rndString := helpers.RandomString(ln)
-
 	for range 3 {
+		rndString := helpers.RandomString(ln)
+
 		if !storage.IsExists(rndString) {
 			return rndString, nil
 		}
-
-		rndString = helpers.RandomString(ln)
 	}
 	return "", errors.New("failed to generate a unique string")
 }
