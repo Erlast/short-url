@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -44,7 +45,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	rndString, err := generateRandom(lenString, storage)
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -71,16 +72,11 @@ func generateRandom(ln int, storage *storages.Storage) (string, error) {
 	rndString := helpers.RandomString(ln)
 
 	for range 3 {
-		if _, err := storage.GetByID(rndString); err != nil {
-			break
+		if !storage.IsExists(rndString) {
+			return rndString, nil
 		}
 
 		rndString = helpers.RandomString(ln)
 	}
-
-	if _, err := storage.GetByID(rndString); err == nil {
-		return "", errors.New("failed to generate a unique string")
-	}
-
-	return rndString, nil
+	return "", errors.New("failed to generate a unique string")
 }

@@ -26,13 +26,8 @@ func ParseFlags() *Cfg {
 		FlagBaseURL: defaultBaseURL,
 	}
 
-	if flag.Lookup("a") == nil {
-		flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
-	}
-
-	if flag.Lookup("b") == nil {
-		flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
-	}
+	flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
+	flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
 
 	flag.Parse()
 	var cfg envCfg

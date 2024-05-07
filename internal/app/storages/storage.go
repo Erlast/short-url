@@ -25,3 +25,8 @@ func (s *Storage) GetByID(id string) (string, error) {
 
 	return originalURL, nil
 }
+
+func (s *Storage) IsExists(key string) bool {
+	_, ok := s.urls[key]
+	return ok
+}

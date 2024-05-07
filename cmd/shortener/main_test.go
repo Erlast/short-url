@@ -18,7 +18,10 @@ import (
 )
 
 func TestOkPostHandler(t *testing.T) {
-	conf := config.ParseFlags()
+	conf := &config.Cfg{
+		FlagRunAddr: ":8080",
+		FlagBaseURL: "http://localhost:8080",
+	}
 
 	store := storages.NewStorage()
 
@@ -48,7 +51,10 @@ func TestOkPostHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
-	conf := config.ParseFlags()
+	conf := &config.Cfg{
+		FlagRunAddr: ":8080",
+		FlagBaseURL: "http://localhost:8080",
+	}
 
 	store := storages.NewStorage()
 
