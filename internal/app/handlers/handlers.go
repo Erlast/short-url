@@ -46,7 +46,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	rndString, err := generateRandom(lenString, storage)
 
 	if err != nil {
-		log.Printf("failed to read the request body: %v", err)
+		log.Printf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
