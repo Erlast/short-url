@@ -15,7 +15,6 @@ import (
 )
 
 const lenString = 7
-const errorText = "Something went wrong!"
 
 func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
 	id := chi.URLParam(req, "id")
@@ -39,16 +38,16 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		log.Println(errorText)
-		http.Error(res, errorText, http.StatusInternalServerError)
+		log.Printf("failed to read the request body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
 	rndString, err := generateRandom(lenString, storage)
 
 	if err != nil {
-		log.Println(errorText)
-		http.Error(res, errorText, http.StatusInternalServerError)
+		log.Printf("failed to read the request body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,7 +65,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	_, err = res.Write([]byte(str))
 	if err != nil {
-		http.Error(res, errorText, http.StatusInternalServerError)
+		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
 		return
 	}
 }
