@@ -39,7 +39,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	if err != nil {
 		log.Printf("failed to read the request body: %v", err)
-		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
@@ -47,7 +47,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	if err != nil {
 		log.Printf("can't generate url: %v", err)
-		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
@@ -65,7 +65,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 
 	_, err = res.Write([]byte(str))
 	if err != nil {
-		http.Error(res, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 }
