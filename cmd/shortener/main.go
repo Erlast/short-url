@@ -4,7 +4,11 @@ import (
 	"log"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/logger"
+	"github.com/Erlast/short-url.git/internal/app/middlewares"
 	"github.com/Erlast/short-url.git/internal/app/routes"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
@@ -12,11 +16,19 @@ import (
 func main() {
 	conf := config.ParseFlags()
 
+	newLogger, err := logger.NewLogger("info")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	store := storages.NewStorage()
 
 	r := routes.NewRouter(store, conf)
 
-	err := http.ListenAndServe(conf.FlagRunAddr, r)
+	newLogger.Info("Running server", zap.String("address", conf.FlagRunAddr))
+
+	err = http.ListenAndServe(conf.FlagRunAddr, middlewares.WithLogging(r, newLogger))
 
 	if err != nil {
 		log.Fatal(err)
