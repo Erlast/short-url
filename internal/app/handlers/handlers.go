@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -20,9 +19,7 @@ const lenString = 7
 func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
 	id := chi.URLParam(req, "id")
 
-	keyURL := strings.Split(id, "\r\n")
-
-	originalURL, ok := storage.GetByID(keyURL[0])
+	originalURL, ok := storage.GetByID(id)
 
 	if ok != nil {
 		http.Error(res, "Not found", http.StatusNotFound)

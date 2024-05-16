@@ -21,9 +21,12 @@ type (
 )
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	size, _ := r.ResponseWriter.Write(b)
+	size, err := r.ResponseWriter.Write(b)
+	if err != nil {
+		return 0, errors.New("error writing response")
+	}
 	r.responseData.size += size
-	return size, errors.New("error write response")
+	return size, nil
 }
 
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
