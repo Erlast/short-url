@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -18,7 +19,7 @@ func main() {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		newLogger.Fatal("Running logger fail")
+		log.Fatal("Running logger fail")
 	}
 
 	store := storages.NewStorage()
@@ -27,7 +28,7 @@ func main() {
 
 	newLogger.Info("Running server", zap.String("address", conf.FlagRunAddr))
 
-	err = http.ListenAndServe(conf.FlagRunAddr, middlewares.WithLogging(r, newLogger))
+	err = http.ListenAndServe(conf.FlagRunAddr, middlewares.WithLogging(r))
 
 	if err != nil {
 		newLogger.Fatal("Running server fail")

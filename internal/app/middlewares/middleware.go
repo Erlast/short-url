@@ -1,11 +1,11 @@
 package middlewares
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/Erlast/short-url.git/internal/app/logger"
 )
 
 type (
@@ -23,7 +23,7 @@ type (
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
-	return size, err
+	return size, fmt.Errorf("error: %w", err)
 }
 
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
@@ -31,7 +31,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func WithLogging(h http.Handler, logger *zap.Logger) http.Handler {
+func WithLogging(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -47,12 +47,12 @@ func WithLogging(h http.Handler, logger *zap.Logger) http.Handler {
 
 		duration := time.Since(start)
 
-		logger.Info("got incoming HTTP request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.String("status", strconv.Itoa(responseData.status)),
-			zap.String("duration", strconv.FormatInt(int64(duration), 10)),
-			zap.String("size", strconv.Itoa(responseData.size)),
+		logger.Log.Infoln(
+			"uri", r.RequestURI,
+			"method", r.Method,
+			"status", responseData.status,
+			"duration", duration,
+			"size", responseData.size,
 		)
 	}
 	return http.HandlerFunc(logFn)
