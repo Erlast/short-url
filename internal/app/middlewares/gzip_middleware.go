@@ -1,17 +1,30 @@
 package middlewares
 
 import (
+	"compress/gzip"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/Erlast/short-url.git/internal/app/logger"
-	"github.com/Erlast/short-url.git/internal/app/zip"
 )
+
+type GzipResponseWriter struct {
+	Writer io.Writer
+	http.ResponseWriter
+}
+
+func (w *GzipResponseWriter) Write(b []byte) (int, error) {
+	write, err := w.Writer.Write(b)
+	if err != nil {
+		return 0, errors.New("error writing to gzip writer")
+	}
+	return write, nil
+}
 
 func GzipMiddleware(h http.Handler) http.Handler {
 	zipFn := func(resp http.ResponseWriter, req *http.Request) {
-		ow := resp
-
 		contentType := req.Header.Get("Content-Type")
 		supportsContentTypeText := strings.Contains(contentType, "text/plain")
 		supportsContentTypeJSON := strings.Contains(contentType, "application/json")
@@ -24,32 +37,42 @@ func GzipMiddleware(h http.Handler) http.Handler {
 		acceptEncoding := req.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportsGzip {
-			cw := zip.NewCompressWriter(resp)
-			ow = cw
-			err := cw.Close()
-			if err != nil {
-				logger.Log.Errorln(err)
-			}
+			gWriter := gzip.NewWriter(resp)
+
+			defer func(gWriter *gzip.Writer) {
+				err := gWriter.Close()
+				if err != nil {
+					logger.Log.Errorln(err)
+				}
+			}(gWriter)
+
+			resp.Header().Set("Content-Encoding", "gzip")
+
+			gzipResponseWriter := &GzipResponseWriter{Writer: gWriter, ResponseWriter: resp}
+			h.ServeHTTP(gzipResponseWriter, req)
+			return
 		}
 
 		contentEncoding := req.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
 		if sendsGzip {
-			cr, err := zip.NewCompressReader(req.Body)
+			gReader, err := gzip.NewReader(req.Body)
 			if err != nil {
-				resp.WriteHeader(http.StatusInternalServerError)
+				http.Error(resp, "Invalid body", http.StatusInternalServerError)
 				return
 			}
-			req.Body = cr
-			defer func(cr *zip.CompressReader) {
-				err := cr.Close()
+
+			defer func(gReader *gzip.Reader) {
+				err := gReader.Close()
 				if err != nil {
 					logger.Log.Errorln(err)
 				}
-			}(cr)
+			}(gReader)
+
+			req.Body = gReader
 		}
 
-		h.ServeHTTP(ow, req)
+		h.ServeHTTP(resp, req)
 	}
 
 	return http.HandlerFunc(zipFn)
