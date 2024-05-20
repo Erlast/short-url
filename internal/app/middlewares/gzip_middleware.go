@@ -34,6 +34,27 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			return
 		}
 
+		contentEncoding := req.Header.Get("Content-Encoding")
+		sendsGzip := strings.Contains(contentEncoding, "gzip")
+		if sendsGzip {
+			gReader, err := gzip.NewReader(req.Body)
+			if err != nil {
+				http.Error(resp, "Invalid body", http.StatusInternalServerError)
+				return
+			}
+
+			defer func(gReader *gzip.Reader) {
+				err := gReader.Close()
+				if err != nil {
+					logger.Log.Errorln(err)
+				}
+			}(gReader)
+
+			req.Body = gReader
+			h.ServeHTTP(resp, req)
+			return
+		}
+
 		acceptEncoding := req.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportsGzip {
@@ -52,27 +73,6 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			h.ServeHTTP(gzipResponseWriter, req)
 			return
 		}
-
-		contentEncoding := req.Header.Get("Content-Encoding")
-		sendsGzip := strings.Contains(contentEncoding, "gzip")
-		if sendsGzip {
-			gReader, err := gzip.NewReader(req.Body)
-			if err != nil {
-				http.Error(resp, "Invalid body", http.StatusInternalServerError)
-				return
-			}
-
-			defer func(gReader *gzip.Reader) {
-				err := gReader.Close()
-				if err != nil {
-					logger.Log.Errorln(err)
-				}
-			}(gReader)
-
-			req.Body = gReader
-		}
-
-		h.ServeHTTP(resp, req)
 	}
 
 	return http.HandlerFunc(zipFn)
