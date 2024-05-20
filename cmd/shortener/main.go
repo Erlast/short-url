@@ -26,7 +26,7 @@ func main() {
 
 	newLogger.Info("Running server address ", conf.FlagRunAddr)
 
-	err = http.ListenAndServe(conf.FlagRunAddr, middlewares.WithLogging(r))
+	err = http.ListenAndServe(conf.FlagRunAddr, middlewares.WithLogging(middlewares.GzipMiddleware(r)))
 
 	if err != nil {
 		newLogger.Fatal("Running server fail")

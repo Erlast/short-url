@@ -160,6 +160,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 }
+
 func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	conf, store := initTestCfg()
 
