@@ -16,24 +16,15 @@ type GzipResponseWriter struct {
 }
 
 func (w *GzipResponseWriter) Write(b []byte) (int, error) {
-	write, err := w.Writer.Write(b)
+	size, err := w.Writer.Write(b)
 	if err != nil {
 		return 0, errors.New("error writing to gzip writer")
 	}
-	return write, nil
+	return size, nil
 }
 
 func GzipMiddleware(h http.Handler) http.Handler {
 	zipFn := func(resp http.ResponseWriter, req *http.Request) {
-		contentType := req.Header.Get("Content-Type")
-		supportsContentTypeText := strings.Contains(contentType, "text/plain")
-		supportsContentTypeJSON := strings.Contains(contentType, "application/json")
-
-		if !supportsContentTypeText && !supportsContentTypeJSON {
-			h.ServeHTTP(resp, req)
-			return
-		}
-
 		contentEncoding := req.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
 		if sendsGzip {
@@ -55,9 +46,15 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			return
 		}
 
+		contentType := req.Header.Get("Content-Type")
+		supportsContentTypeText := strings.Contains(contentType, "text/plain")
+		supportsContentTypeJSON := strings.Contains(contentType, "application/json")
+
+		isCompressed := supportsContentTypeText || supportsContentTypeJSON
+
 		acceptEncoding := req.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
-		if supportsGzip {
+		if supportsGzip && isCompressed {
 			gWriter := gzip.NewWriter(resp)
 
 			defer func(gWriter *gzip.Writer) {
@@ -73,6 +70,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			h.ServeHTTP(gzipResponseWriter, req)
 			return
 		}
+		h.ServeHTTP(resp, req)
 	}
 
 	return http.HandlerFunc(zipFn)
