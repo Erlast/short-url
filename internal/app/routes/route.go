@@ -25,5 +25,11 @@ func NewRouter(store *storages.Storage, conf *config.Cfg) *chi.Mux {
 
 	r.Post("/", handlePost)
 
+	handleShorten := func(res http.ResponseWriter, req *http.Request) {
+		handlers.PostShortenHandler(res, req, store, conf)
+	}
+
+	r.Post("/api/shorten", handleShorten)
+
 	return r
 }

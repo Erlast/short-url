@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -15,6 +16,14 @@ import (
 )
 
 const lenString = 7
+
+type BodyRequested struct {
+	URL string `json:"url"`
+}
+
+type BodyResponse struct {
+	ShortURL string `json:"result"`
+}
 
 func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
 	id := chi.URLParam(req, "id")
@@ -64,6 +73,69 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	res.WriteHeader(http.StatusCreated)
 
 	_, err = res.Write([]byte(str))
+	if err != nil {
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+}
+
+func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage, conf *config.Cfg) {
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty String!", http.StatusBadRequest)
+		return
+	}
+
+	bodyReq := BodyRequested{}
+
+	body, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		log.Printf("failed to read the request body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.Unmarshal(body, &bodyReq)
+
+	if err != nil {
+		log.Printf("failed to unmarshal body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	rndString, err := generateRandom(lenString, storage)
+
+	if err != nil {
+		log.Printf("can't generate url: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	storage.SaveURL(rndString, bodyReq.URL)
+
+	var bodyResp BodyResponse
+
+	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
+
+	if err != nil {
+		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+		return
+	}
+
+	bodyResp.ShortURL = str
+
+	resp, err := json.Marshal(bodyResp)
+
+	if err != nil {
+		log.Printf("failed to marshal result: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+
+	_, err = res.Write(resp)
 	if err != nil {
 		http.Error(res, "", http.StatusInternalServerError)
 		return
