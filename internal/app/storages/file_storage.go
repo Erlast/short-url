@@ -37,7 +37,12 @@ func getFullFilePath(fname string) (string, error) {
 		return "", errors.New("can't read folder")
 	}
 	absolutePath, _ := filepath.Abs(p)
-	path := filepath.Join(absolutePath, "..", "..", filepath.Dir(fname), filepath.Base(fname))
+	fileName := filepath.Base(fname)
+	extension := filepath.Ext(fileName)
+	if extension == "" {
+		fileName += ".json"
+	}
+	path := filepath.Join(absolutePath, "..", "..", filepath.Dir(fname), fileName)
 	return path, nil
 }
 
@@ -47,7 +52,7 @@ func (s *Storage) Load(fname string) error {
 		return err
 	}
 
-	_, err = os.Stat(path)
+	_, err = os.Stat(filepath.Dir(path))
 
 	if os.IsNotExist(err) {
 		err = os.Mkdir(filepath.Dir(path), perm777)
