@@ -14,9 +14,9 @@ type Cfg struct {
 }
 
 type envCfg struct {
-	runAddr     string `env:"SERVER_ADDRESS"`
-	baseURL     string `env:"BASE_URL"`
-	fileStorage string `env:"FILE_STORAGE_PATH"`
+	runAddr     string `env:"SERVER_ADDRESS" envDefault:":8080"`
+	baseURL     string `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	fileStorage string `env:"FILE_STORAGE_PATH" envDefault:"/tmp/short-url-db.json"`
 }
 
 const defaultRunAddr = ":8080"
@@ -25,11 +25,7 @@ const defaultBaseURL = "http://localhost:8080"
 // const defaultFileStoragePath = "/tmp/short-url-db.json"
 
 func ParseFlags() *Cfg {
-	config := &Cfg{
-		FlagRunAddr: defaultRunAddr,
-		FlagBaseURL: defaultBaseURL,
-		FileStorage: "",
-	}
+	config := &Cfg{}
 
 	flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
 	flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
