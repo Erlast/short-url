@@ -28,7 +28,7 @@ func (s *Storage) Save(fname string) error {
 
 func (s *Storage) Load(fname string) error {
 	err := createFileIfNotExists(fname, s)
-	logger.Log.Info("config", s)
+
 	if err != nil {
 		return err
 	}
