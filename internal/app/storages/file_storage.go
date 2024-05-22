@@ -14,39 +14,28 @@ const perm600 = 0o600
 const perm777 = 0o777
 
 func (s *Storage) Save(fname string) error {
-	path := getFullFilePath(fname)
-
 	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
 	}
 
-	err = os.WriteFile(path, data, perm600)
+	err = os.WriteFile(fname, data, perm600)
 	if err != nil {
 		return errors.New("error write file")
 	}
 	return nil
 }
 
-func getFullFilePath(fname string) string {
-	tempPath := os.TempDir()
-
-	path := filepath.Join(tempPath, fname)
-	return path
-}
-
 func (s *Storage) Load(fname string) error {
-	path := getFullFilePath(fname)
-
-	_, err := os.Stat(filepath.Dir(path))
+	_, err := os.Stat(filepath.Dir(fname))
 
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(path), perm777)
+		err := os.MkdirAll(filepath.Dir(fname), perm777)
 		if err != nil {
 			logger.Log.Error("can't create directory", err)
 		}
 
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, perm777)
+		file, err := os.OpenFile(fname, os.O_CREATE|os.O_RDONLY, perm777)
 		if err != nil {
 			logger.Log.Error("can't create file path", err)
 		}
@@ -62,7 +51,7 @@ func (s *Storage) Load(fname string) error {
 		return err
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(fname)
 	if err != nil {
 		return errors.New("unable to read file")
 	}
