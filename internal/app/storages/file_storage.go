@@ -32,10 +32,7 @@ func getFullFilePath(fname string) string {
 	tempPath := os.TempDir()
 
 	fileName := filepath.Base(fname)
-	extension := filepath.Ext(fileName)
-	if extension == "" {
-		fileName += ".json"
-	}
+
 	path := filepath.Join(tempPath, "..", "..", filepath.Dir(fname), fileName)
 	return path
 }
