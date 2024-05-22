@@ -21,7 +21,7 @@ type envCfg struct {
 
 const defaultRunAddr = ":8080"
 const defaultBaseURL = "http://localhost:8080"
-const defaultFileStoragePath = "/tmp/short-url-db.json"
+const defaultFileStoragePath = "/tmp/some/short-url-db.json"
 
 func ParseFlags() *Cfg {
 	config := &Cfg{

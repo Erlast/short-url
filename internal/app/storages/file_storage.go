@@ -51,11 +51,10 @@ func (s *Storage) Load(fname string) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = os.Stat(filepath.Dir(path))
 
 	if os.IsNotExist(err) {
-		err = os.Mkdir(filepath.Dir(path), perm777)
+		err := os.MkdirAll(filepath.Dir(path), perm777)
 		if err != nil {
 			logger.Log.Error("can't create directory", err)
 		}
