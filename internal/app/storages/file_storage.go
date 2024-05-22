@@ -68,12 +68,18 @@ func createFileIfNotExists(fname string, s *Storage) error {
 
 	if os.IsNotExist(err) {
 		err := os.MkdirAll(filepath.Dir(fname), perm777)
+
 		if err != nil {
+			logger.Log.Error("err:", err)
 			return errors.New("can't create directory")
 		}
+	}
 
+	_, err = os.Stat(fname)
+	if os.IsNotExist(err) {
 		file, err := os.OpenFile(fname, os.O_CREATE|os.O_RDONLY, perm777)
 		if err != nil {
+			logger.Log.Error("err:", err)
 			return errors.New("can't create file path")
 		}
 		defer func(file *os.File) {
