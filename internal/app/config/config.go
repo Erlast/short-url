@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"github.com/Erlast/short-url.git/internal/app/logger"
 	"log"
 
 	"github.com/caarlos0/env/v11"
@@ -53,8 +52,6 @@ func ParseFlags() *Cfg {
 	if len(cfg.fileStorage) != 0 {
 		config.FileStorage = cfg.fileStorage
 	}
-
-	logger.Log.Info("config", config)
 
 	return config
 }
