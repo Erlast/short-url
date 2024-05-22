@@ -20,7 +20,7 @@ func main() {
 		log.Fatal("Running logger fail")
 	}
 
-	store := storages.NewStorage()
+	store := storages.NewStorage(conf)
 
 	r := routes.NewRouter(store, conf)
 

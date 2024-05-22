@@ -2,31 +2,61 @@ package storages
 
 import (
 	"fmt"
+
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/logger"
 )
 
-type Storage struct {
-	urls map[string]string
+type ShortenURL struct {
+	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	ID          int    `json:"uuid"`
 }
 
-func NewStorage() *Storage {
-	return &Storage{urls: make(map[string]string)}
+type Storage struct {
+	fileStorage string
+	urls        []ShortenURL
+}
+
+func NewStorage(cfg *config.Cfg) *Storage {
+	if cfg.FileStorage != "" {
+		storage, err := LoadStorageFromFile(cfg, &Storage{urls: []ShortenURL{}, fileStorage: cfg.FileStorage})
+		if err != nil {
+			logger.Log.Fatal("unable to load storage:", err)
+		}
+		return storage
+	}
+	return &Storage{urls: []ShortenURL{}, fileStorage: cfg.FileStorage}
 }
 
 func (s *Storage) SaveURL(id string, originalURL string) {
-	s.urls[id] = originalURL
+	uuid := len(s.urls) + 1
+	s.urls = append(s.urls, ShortenURL{originalURL, id, uuid})
+	if s.fileStorage != "" {
+		err := SaveToFileStorage(s.fileStorage, s)
+		if err != nil {
+			logger.Log.Fatal("Unable to save storage:", err)
+		}
+	}
 }
 
 func (s *Storage) GetByID(id string) (string, error) {
-	originalURL, ok := s.urls[id]
-
-	if !ok {
-		return "", fmt.Errorf("short URL %s was not found", id)
+	fmt.Println(s.urls)
+	for i := range s.urls {
+		if s.urls[i].ShortURL == id {
+			return s.urls[i].OriginalURL, nil
+		}
 	}
 
-	return originalURL, nil
+	return "", fmt.Errorf("short URL %s was not found", id)
 }
 
 func (s *Storage) IsExists(key string) bool {
-	_, ok := s.urls[key]
-	return ok
+	for i := range s.urls {
+		if s.urls[i].ShortURL == key {
+			return true
+		}
+	}
+
+	return false
 }

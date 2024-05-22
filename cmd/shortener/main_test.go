@@ -23,7 +23,7 @@ func initTestCfg() (*config.Cfg, *storages.Storage) {
 		FlagBaseURL: "http://localhost:8080",
 	}
 
-	store := storages.NewStorage()
+	store := storages.NewStorage(conf)
 
 	return conf, store
 }
@@ -112,7 +112,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.NewStorage()
+	_, store := initTestCfg()
 
 	store.SaveURL(rndString, "http://somelink.ru")
 
@@ -139,7 +139,7 @@ func TestGetHandler(t *testing.T) {
 func TestNotFoundGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.NewStorage()
+	_, store := initTestCfg()
 
 	store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
 
