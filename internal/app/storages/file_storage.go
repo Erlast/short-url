@@ -14,11 +14,6 @@ const perm600 = 0o600
 const perm777 = 0o777
 
 func (s *Storage) Save(fname string) error {
-	err := createFileIfNotExists(fname, s)
-	if err != nil {
-		return err
-	}
-
 	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
