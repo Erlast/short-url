@@ -31,9 +31,7 @@ func (s *Storage) Save(fname string) error {
 func getFullFilePath(fname string) string {
 	tempPath := os.TempDir()
 
-	fileName := filepath.Base(fname)
-
-	path := filepath.Join(tempPath, "..", "..", filepath.Dir(fname), fileName)
+	path := filepath.Join(tempPath, fname)
 	return path
 }
 
