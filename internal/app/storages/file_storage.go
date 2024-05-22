@@ -14,6 +14,11 @@ const perm600 = 0o600
 const perm777 = 0o777
 
 func (s *Storage) Save(fname string) error {
+	err := createFileIfNotExists(fname, s)
+	if err != nil {
+		return err
+	}
+
 	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
@@ -27,14 +32,11 @@ func (s *Storage) Save(fname string) error {
 }
 
 func (s *Storage) Load(fname string) error {
-	err := createFileIfNotExists(fname)
+	err := createFileIfNotExists(fname, s)
 	if err != nil {
 		return err
 	}
 
-	if err := s.Save(fname); err != nil {
-		return err
-	}
 	data, err := os.ReadFile(fname)
 	if err != nil {
 		return errors.New("unable to read file")
@@ -66,7 +68,7 @@ func SaveToFileStorage(fname string, storage *Storage) error {
 	return nil
 }
 
-func createFileIfNotExists(fname string) error {
+func createFileIfNotExists(fname string, s *Storage) error {
 	_, err := os.Stat(filepath.Dir(fname))
 
 	if os.IsNotExist(err) {
@@ -85,6 +87,10 @@ func createFileIfNotExists(fname string) error {
 				logger.Log.Error("unable to close file")
 			}
 		}(file)
+
+		if err := s.Save(fname); err != nil {
+			return err
+		}
 	}
 
 	return nil
