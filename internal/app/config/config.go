@@ -24,7 +24,11 @@ const defaultBaseURL = "http://localhost:8080"
 const defaultFileStoragePath = "/tmp/short-url-db.json"
 
 func ParseFlags() *Cfg {
-	config := &Cfg{}
+	config := &Cfg{
+		FlagRunAddr: defaultRunAddr,
+		FlagBaseURL: defaultBaseURL,
+		FileStorage: defaultFileStoragePath,
+	}
 
 	flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
 	flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
