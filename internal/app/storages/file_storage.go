@@ -14,10 +14,7 @@ const perm600 = 0o600
 const perm777 = 0o777
 
 func (s *Storage) Save(fname string) error {
-	path, err := getFullFilePath(fname)
-	if err != nil {
-		return err
-	}
+	path := getFullFilePath(fname)
 
 	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
@@ -31,27 +28,22 @@ func (s *Storage) Save(fname string) error {
 	return nil
 }
 
-func getFullFilePath(fname string) (string, error) {
-	p, err := os.Getwd()
-	if err != nil {
-		return "", errors.New("can't read folder")
-	}
-	absolutePath, _ := filepath.Abs(p)
+func getFullFilePath(fname string) string {
+	tempPath := os.TempDir()
+
 	fileName := filepath.Base(fname)
 	extension := filepath.Ext(fileName)
 	if extension == "" {
 		fileName += ".json"
 	}
-	path := filepath.Join(absolutePath, "..", "..", filepath.Dir(fname), fileName)
-	return path, nil
+	path := filepath.Join(tempPath, "..", "..", filepath.Dir(fname), fileName)
+	return path
 }
 
 func (s *Storage) Load(fname string) error {
-	path, err := getFullFilePath(fname)
-	if err != nil {
-		return err
-	}
-	_, err = os.Stat(filepath.Dir(path))
+	path := getFullFilePath(fname)
+
+	_, err := os.Stat(filepath.Dir(path))
 
 	if os.IsNotExist(err) {
 		err := os.MkdirAll(filepath.Dir(path), perm777)

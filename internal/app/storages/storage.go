@@ -41,7 +41,6 @@ func (s *Storage) SaveURL(id string, originalURL string) {
 }
 
 func (s *Storage) GetByID(id string) (string, error) {
-	fmt.Println(s.urls)
 	for i := range s.urls {
 		if s.urls[i].ShortURL == id {
 			return s.urls[i].OriginalURL, nil
