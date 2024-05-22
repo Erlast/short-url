@@ -32,7 +32,7 @@ func ParseFlags() *Cfg {
 
 	flag.StringVar(&config.FlagRunAddr, "a", defaultRunAddr, "port to run server")
 	flag.StringVar(&config.FlagBaseURL, "b", defaultBaseURL, "base URL")
-	flag.StringVar(&config.FileStorage, "f", defaultFileStoragePath, "file storage path")
+	flag.StringVar(&config.FileStorage, "f", "", "file storage path")
 
 	flag.Parse()
 	var cfg envCfg
