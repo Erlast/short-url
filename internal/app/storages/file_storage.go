@@ -14,6 +14,10 @@ const perm600 = 0o600
 const perm777 = 0o777
 
 func (s *Storage) Save(fname string) error {
+	err := createFileIfNotExists(fname)
+	if err != nil {
+		return err
+	}
 	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
@@ -27,30 +31,14 @@ func (s *Storage) Save(fname string) error {
 }
 
 func (s *Storage) Load(fname string) error {
-	_, err := os.Stat(filepath.Dir(fname))
-
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(fname), perm777)
-		if err != nil {
-			logger.Log.Error("can't create directory", err)
-		}
-
-		file, err := os.OpenFile(fname, os.O_CREATE|os.O_RDONLY, perm777)
-		if err != nil {
-			logger.Log.Error("can't create file path", err)
-		}
-		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				logger.Log.Error("unable to close file")
-			}
-		}(file)
+	err := createFileIfNotExists(fname)
+	if err != nil {
+		return err
 	}
 
 	if err := s.Save(fname); err != nil {
 		return err
 	}
-
 	data, err := os.ReadFile(fname)
 	if err != nil {
 		return errors.New("unable to read file")
@@ -77,6 +65,30 @@ func LoadStorageFromFile(cfg *config.Cfg, storage *Storage) (*Storage, error) {
 func SaveToFileStorage(fname string, storage *Storage) error {
 	if err := storage.Save(fname); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func createFileIfNotExists(fname string) error {
+	_, err := os.Stat(filepath.Dir(fname))
+
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(filepath.Dir(fname), perm777)
+		if err != nil {
+			return errors.New("can't create directory")
+		}
+
+		file, err := os.OpenFile(fname, os.O_CREATE|os.O_RDONLY, perm777)
+		if err != nil {
+			return errors.New("can't create file path")
+		}
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				logger.Log.Error("unable to close file")
+			}
+		}(file)
 	}
 
 	return nil
