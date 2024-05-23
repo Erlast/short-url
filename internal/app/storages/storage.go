@@ -19,14 +19,15 @@ type Storage struct {
 }
 
 func NewStorage(cfg *config.Cfg) *Storage {
+	store := &Storage{urls: []ShortenURL{}, fileStorage: cfg.FileStorage}
 	if cfg.FileStorage != "" {
-		storage, err := LoadStorageFromFile(cfg, &Storage{urls: []ShortenURL{}, fileStorage: cfg.FileStorage})
+		storage, err := LoadStorageFromFile(store)
 		if err != nil {
 			logger.Log.Fatal("unable to load storage:", err)
 		}
 		return storage
 	}
-	return &Storage{urls: []ShortenURL{}, fileStorage: cfg.FileStorage}
+	return store
 }
 
 func (s *Storage) SaveURL(id string, originalURL string) {

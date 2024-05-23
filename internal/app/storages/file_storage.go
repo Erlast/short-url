@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/logger"
 )
 
@@ -46,8 +45,8 @@ func (s *Storage) Load(fname string) error {
 	return nil
 }
 
-func LoadStorageFromFile(cfg *config.Cfg, storage *Storage) (*Storage, error) {
-	fname := cfg.FileStorage
+func LoadStorageFromFile(storage *Storage) (*Storage, error) {
+	fname := storage.fileStorage
 
 	if err := storage.Load(fname); err != nil {
 		return &Storage{}, err
