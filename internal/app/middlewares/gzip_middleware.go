@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Erlast/short-url.git/internal/app/logger"
+	"go.uber.org/zap"
 )
 
 type GzipResponseWriter struct {
@@ -23,13 +23,14 @@ func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	return size, nil
 }
 
-func GzipMiddleware(h http.Handler) http.Handler {
-	zipFn := func(resp http.ResponseWriter, req *http.Request) {
+func GzipMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		contentEncoding := req.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
 		if sendsGzip {
 			gReader, err := gzip.NewReader(req.Body)
 			if err != nil {
+				logger.Errorln(err)
 				http.Error(resp, "Invalid body", http.StatusInternalServerError)
 				return
 			}
@@ -37,7 +38,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			defer func(gReader *gzip.Reader) {
 				err := gReader.Close()
 				if err != nil {
-					logger.Log.Errorln(err)
+					logger.Errorln(err)
 				}
 			}(gReader)
 
@@ -60,7 +61,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			defer func(gWriter *gzip.Writer) {
 				err := gWriter.Close()
 				if err != nil {
-					logger.Log.Errorln(err)
+					logger.Errorln(err)
 				}
 			}(gWriter)
 
@@ -71,7 +72,5 @@ func GzipMiddleware(h http.Handler) http.Handler {
 			return
 		}
 		h.ServeHTTP(resp, req)
-	}
-
-	return http.HandlerFunc(zipFn)
+	})
 }

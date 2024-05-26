@@ -6,12 +6,15 @@ import (
 	"go.uber.org/zap"
 )
 
-var Log *zap.SugaredLogger
-
 func NewLogger(level string) (*zap.SugaredLogger, error) {
 	cfg := zap.NewProductionConfig()
 
-	cfg.Level, _ = zap.ParseAtomicLevel(level)
+	atomicLevel, err := zap.ParseAtomicLevel(level)
+	if err != nil {
+		return nil, errors.New("logger parse level failed")
+	}
+
+	cfg.Level = atomicLevel
 
 	zl, err := cfg.Build()
 
@@ -20,8 +23,6 @@ func NewLogger(level string) (*zap.SugaredLogger, error) {
 	}
 
 	sugar := zl.Sugar()
-
-	Log = sugar
 
 	return sugar, nil
 }

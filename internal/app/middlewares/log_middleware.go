@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Erlast/short-url.git/internal/app/logger"
+	"go.uber.org/zap"
 )
 
 type (
@@ -34,8 +34,8 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func WithLogging(h http.Handler) http.Handler {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
+func WithLogging(h http.Handler, logger *zap.SugaredLogger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		responseData := &responseData{
@@ -50,13 +50,12 @@ func WithLogging(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		logger.Log.Infoln(
+		logger.Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", responseData.status,
 			"duration", duration,
 			"size", responseData.size,
 		)
-	}
-	return http.HandlerFunc(logFn)
+	})
 }

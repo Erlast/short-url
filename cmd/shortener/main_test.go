@@ -14,16 +14,19 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/handlers"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/Erlast/short-url.git/internal/app/logger"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func initTestCfg() (*config.Cfg, *storages.Storage) {
+func initTestCfg() (*config.Cfg, storages.URLStorage) {
 	conf := &config.Cfg{
 		FlagRunAddr: ":8080",
 		FlagBaseURL: "http://localhost:8080",
 	}
 
-	store := storages.NewStorage(conf)
+	newLogger, _ := logger.NewLogger("info")
+
+	store := storages.NewStorage(conf, newLogger)
 
 	return conf, store
 }
@@ -114,7 +117,7 @@ func TestGetHandler(t *testing.T) {
 
 	_, store := initTestCfg()
 
-	store.SaveURL(rndString, "http://somelink.ru")
+	_ = store.SaveURL(rndString, "http://somelink.ru")
 
 	router := chi.NewRouter()
 
@@ -141,7 +144,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	_, store := initTestCfg()
 
-	store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
+	_ = store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
