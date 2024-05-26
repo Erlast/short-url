@@ -34,6 +34,10 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
+func (r *loggingResponseWriter) Header() http.Header {
+	return r.ResponseWriter.Header()
+}
+
 func WithLogging(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
