@@ -17,7 +17,8 @@ type FileStorage struct {
 }
 
 func NewFileStorage(fileStorage string) (*FileStorage, error) {
-	storage, err := loadStorageFromFile(&FileStorage{memoryStorage: &MemoryStorage{urls: []ShortenURL{}}, fileStorage: fileStorage})
+	memoryStore := &MemoryStorage{urls: []ShortenURL{}}
+	storage, err := loadStorageFromFile(&FileStorage{memoryStorage: memoryStore, fileStorage: fileStorage})
 	if err != nil {
 		return nil, errors.New("unable to load storage")
 	}
