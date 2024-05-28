@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/handlers"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
-	"github.com/Erlast/short-url.git/internal/app/logger"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
@@ -24,9 +24,11 @@ func initTestCfg() (*config.Cfg, storages.URLStorage) {
 		FlagBaseURL: "http://localhost:8080",
 	}
 
-	newLogger, _ := logger.NewLogger("info")
+	store, err := storages.NewStorage(conf)
 
-	store := storages.NewStorage(conf, newLogger)
+	if err != nil {
+		fmt.Println("unable to init test config")
+	}
 
 	return conf, store
 }
@@ -117,7 +119,11 @@ func TestGetHandler(t *testing.T) {
 
 	_, store := initTestCfg()
 
-	_ = store.SaveURL(rndString, "http://somelink.ru")
+	err := store.SaveURL(rndString, "http://somelink.ru")
+
+	if err != nil {
+		fmt.Println("unable to save url")
+	}
 
 	router := chi.NewRouter()
 
@@ -144,7 +150,10 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	_, store := initTestCfg()
 
-	_ = store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
+	err := store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
+	if err != nil {
+		fmt.Println("unable to save url")
+	}
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
@@ -155,7 +164,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	res := w.Result()
 
-	err := res.Body.Close()
+	err = res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")

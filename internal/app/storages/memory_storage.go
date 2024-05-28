@@ -2,13 +2,16 @@ package storages
 
 import (
 	"fmt"
-	"slices"
 )
 
 type MemoryStorage struct {
 	urls []ShortenURL
 }
 
+func NewMemoryStorage() (*MemoryStorage, error) {
+	store := &MemoryStorage{urls: []ShortenURL{}}
+	return store, nil
+}
 func (s *MemoryStorage) SaveURL(id string, originalURL string) error {
 	uuid := len(s.urls) + 1
 	s.urls = append(s.urls, ShortenURL{originalURL, id, uuid})
@@ -27,6 +30,10 @@ func (s *MemoryStorage) GetByID(id string) (string, error) {
 }
 
 func (s *MemoryStorage) IsExists(key string) bool {
-	idx := slices.IndexFunc(s.urls, func(shorten ShortenURL) bool { return shorten.ShortURL == key })
-	return idx != -1
+	urls := map[string]string{}
+	for _, v := range s.urls {
+		urls[v.ShortURL] = v.OriginalURL
+	}
+	_, ok := urls[key]
+	return ok
 }

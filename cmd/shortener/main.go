@@ -19,7 +19,10 @@ func main() {
 		log.Fatal("Running logger fail")
 	}
 
-	store := storages.NewStorage(conf, newLogger)
+	store, err := storages.NewStorage(conf)
+	if err != nil {
+		newLogger.Fatal("Unable to create storage")
+	}
 
 	r := routes.NewRouter(store, conf, newLogger)
 

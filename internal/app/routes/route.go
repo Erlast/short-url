@@ -15,15 +15,12 @@ import (
 func NewRouter(store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 
-	WithLogging := func(h http.Handler) http.Handler {
+	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.WithLogging(h, logger)
-	}
-	r.Use(WithLogging)
-
-	GzipMiddleware := func(h http.Handler) http.Handler {
+	})
+	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.GzipMiddleware(h, logger)
-	}
-	r.Use(GzipMiddleware)
+	})
 
 	handleGet := func(res http.ResponseWriter, req *http.Request) {
 		handlers.GetHandler(res, req, store)

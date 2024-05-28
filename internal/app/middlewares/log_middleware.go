@@ -8,6 +8,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const emptyStatus = 0
+
 type (
 	responseData struct {
 		status int
@@ -26,6 +28,9 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 		return 0, errors.New("error writing response")
 	}
 	r.responseData.size += size
+	if r.responseData.status == emptyStatus {
+		r.responseData.status = http.StatusOK
+	}
 	return size, nil
 }
 
