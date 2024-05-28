@@ -70,7 +70,7 @@ func (s *FileStorage) save(urls *[]ShortenURL) error {
 
 	err = os.WriteFile(s.fileStorage, data, perm600)
 	if err != nil {
-		return errors.New("error write file")
+		return fmt.Errorf("unable to read file: %w", err)
 	}
 	return nil
 }
