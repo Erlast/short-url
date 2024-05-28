@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"go.uber.org/zap"
 )
 
 const perm600 = 0o600
 const perm777 = 0o777
 
 type FileStorage struct {
-	memoryStorage *MemoryStorage
-	fileStorage   string
+	*MemoryStorage
+	fileStorage string
 }
 
-func NewFileStorage(fileStorage string) (*FileStorage, error) {
-	memoryStore := &MemoryStorage{urls: []ShortenURL{}}
-	storage, err := loadStorageFromFile(&FileStorage{memoryStorage: memoryStore, fileStorage: fileStorage})
+func NewFileStorage(fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
+	storage, err := loadStorageFromFile(&FileStorage{fileStorage: fileStorage}, logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
 	}
@@ -26,7 +27,7 @@ func NewFileStorage(fileStorage string) (*FileStorage, error) {
 }
 
 func (s *FileStorage) SaveURL(id string, originalURL string) error {
-	err := s.memoryStorage.SaveURL(id, originalURL)
+	err := s.MemoryStorage.SaveURL(id, originalURL)
 	if err != nil {
 		return errors.New("unable to save storage")
 	}
@@ -39,14 +40,6 @@ func (s *FileStorage) SaveURL(id string, originalURL string) error {
 	return nil
 }
 
-func (s *FileStorage) GetByID(id string) (string, error) {
-	return s.memoryStorage.GetByID(id)
-}
-
-func (s *FileStorage) IsExists(key string) bool {
-	return s.memoryStorage.IsExists(key)
-}
-
 func saveToFileStorage(fname string, storage *FileStorage) error {
 	if err := storage.save(fname); err != nil {
 		return err
@@ -55,10 +48,10 @@ func saveToFileStorage(fname string, storage *FileStorage) error {
 	return nil
 }
 
-func loadStorageFromFile(storage *FileStorage) (*FileStorage, error) {
+func loadStorageFromFile(storage *FileStorage, logger *zap.SugaredLogger) (*FileStorage, error) {
 	fname := storage.fileStorage
 
-	if err := storage.load(fname); err != nil {
+	if err := storage.load(fname, logger); err != nil {
 		return &FileStorage{}, err
 	}
 
@@ -66,7 +59,7 @@ func loadStorageFromFile(storage *FileStorage) (*FileStorage, error) {
 }
 
 func (s *FileStorage) save(fname string) error {
-	data, err := json.MarshalIndent(s.memoryStorage.urls, "", "   ")
+	data, err := json.MarshalIndent(s.urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
 	}
@@ -78,8 +71,8 @@ func (s *FileStorage) save(fname string) error {
 	return nil
 }
 
-func (s *FileStorage) load(fname string) error {
-	err := createFileIfNotExists(fname, s)
+func (s *FileStorage) load(fname string, logger *zap.SugaredLogger) error {
+	err := createFileIfNotExists(fname, s, logger)
 
 	if err != nil {
 		return err
@@ -87,10 +80,10 @@ func (s *FileStorage) load(fname string) error {
 
 	data, err := os.ReadFile(fname)
 	if err != nil {
-		return errors.New("unable to read file")
+		return fmt.Errorf("unable to read file: %w", err)
 	}
 
-	err = json.Unmarshal(data, &s.memoryStorage.urls)
+	err = json.Unmarshal(data, &s.urls)
 	if err != nil {
 		return errors.New("unable to unmarshal")
 	}
@@ -98,7 +91,7 @@ func (s *FileStorage) load(fname string) error {
 	return nil
 }
 
-func createFileIfNotExists(fname string, s *FileStorage) error {
+func createFileIfNotExists(fname string, s *FileStorage, logger *zap.SugaredLogger) error {
 	_, err := os.Stat(filepath.Dir(fname))
 
 	if os.IsNotExist(err) {
@@ -118,7 +111,7 @@ func createFileIfNotExists(fname string, s *FileStorage) error {
 		defer func(file *os.File) {
 			err := file.Close()
 			if err != nil {
-				fmt.Println("unable to close file")
+				logger.Error("unable to close file: ", err)
 			}
 		}(file)
 

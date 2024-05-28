@@ -5,35 +5,31 @@ import (
 )
 
 type MemoryStorage struct {
-	urls []ShortenURL
+	urls map[string]ShortenURL
 }
 
 func NewMemoryStorage() (*MemoryStorage, error) {
-	store := &MemoryStorage{urls: []ShortenURL{}}
+	store := &MemoryStorage{urls: map[string]ShortenURL{}}
 	return store, nil
 }
 func (s *MemoryStorage) SaveURL(id string, originalURL string) error {
 	uuid := len(s.urls) + 1
-	s.urls = append(s.urls, ShortenURL{originalURL, id, uuid})
+	s.urls[id] = ShortenURL{originalURL, id, uuid}
 
 	return nil
 }
 
 func (s *MemoryStorage) GetByID(id string) (string, error) {
-	for i := range s.urls {
-		if s.urls[i].ShortURL == id {
-			return s.urls[i].OriginalURL, nil
-		}
+	searchResult, ok := s.urls[id]
+
+	if !ok {
+		return "", fmt.Errorf("short URL %s was not found", id)
 	}
 
-	return "", fmt.Errorf("short URL %s was not found", id)
+	return searchResult.OriginalURL, nil
 }
 
 func (s *MemoryStorage) IsExists(key string) bool {
-	urls := map[string]string{}
-	for _, v := range s.urls {
-		urls[v.ShortURL] = v.OriginalURL
-	}
-	_, ok := urls[key]
+	_, ok := s.urls[key]
 	return ok
 }

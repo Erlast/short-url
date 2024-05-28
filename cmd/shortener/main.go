@@ -19,7 +19,7 @@ func main() {
 		log.Fatal("Running logger fail")
 	}
 
-	store, err := storages.NewStorage(conf)
+	store, err := storages.NewStorage(conf, newLogger)
 	if err != nil {
 		newLogger.Fatal("Unable to create storage")
 	}

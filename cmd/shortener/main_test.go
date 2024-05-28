@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/handlers"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/Erlast/short-url.git/internal/app/logger"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
@@ -23,8 +25,12 @@ func initTestCfg() (*config.Cfg, storages.URLStorage) {
 		FlagRunAddr: ":8080",
 		FlagBaseURL: "http://localhost:8080",
 	}
+	newLogger, err := logger.NewLogger("info")
 
-	store, err := storages.NewStorage(conf)
+	if err != nil {
+		log.Fatal("Running logger fail")
+	}
+	store, err := storages.NewStorage(conf, newLogger)
 
 	if err != nil {
 		fmt.Println("unable to init test config")

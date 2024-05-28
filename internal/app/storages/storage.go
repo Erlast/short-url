@@ -2,6 +2,7 @@ package storages
 
 import (
 	"github.com/Erlast/short-url.git/internal/app/config"
+	"go.uber.org/zap"
 )
 
 type URLStorage interface {
@@ -16,9 +17,9 @@ type ShortenURL struct {
 	ID          int    `json:"uuid"`
 }
 
-func NewStorage(cfg *config.Cfg) (URLStorage, error) {
+func NewStorage(cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
 	if cfg.FileStorage != "" {
-		return NewFileStorage(cfg.FileStorage)
+		return NewFileStorage(cfg.FileStorage, logger)
 	}
 	return NewMemoryStorage()
 }
