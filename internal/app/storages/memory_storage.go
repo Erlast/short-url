@@ -20,13 +20,13 @@ func (s *MemoryStorage) SaveURL(id string, originalURL string) error {
 }
 
 func (s *MemoryStorage) GetByID(id string) (string, error) {
-	searchResult, ok := s.urls[id]
+	result, ok := s.urls[id]
 
 	if !ok {
 		return "", fmt.Errorf("short URL %s was not found", id)
 	}
 
-	return searchResult.OriginalURL, nil
+	return result.OriginalURL, nil
 }
 
 func (s *MemoryStorage) IsExists(key string) bool {

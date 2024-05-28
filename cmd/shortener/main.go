@@ -21,7 +21,7 @@ func main() {
 
 	store, err := storages.NewStorage(conf, newLogger)
 	if err != nil {
-		newLogger.Fatal("Unable to create storage")
+		newLogger.Fatalf("Unable to create storage %v: ", err)
 	}
 
 	r := routes.NewRouter(store, conf, newLogger)

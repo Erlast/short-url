@@ -19,7 +19,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
-	storage, err := loadStorageFromFile(&FileStorage{fileStorage: fileStorage}, logger)
+	storage, err := loadStorageFromFile(&FileStorage{&MemoryStorage{urls: map[string]ShortenURL{}}, fileStorage}, logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
 	}
@@ -32,7 +32,11 @@ func (s *FileStorage) SaveURL(id string, originalURL string) error {
 		return errors.New("unable to save storage")
 	}
 
-	err = saveToFileStorage(s.fileStorage, s)
+	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
+	for _, value := range s.MemoryStorage.urls {
+		urls = append(urls, ShortenURL{value.OriginalURL, value.ShortURL, value.ID})
+	}
+	err = saveToFileStorage(s, &urls)
 	if err != nil {
 		return errors.New("unable to save storage")
 	}
@@ -40,8 +44,8 @@ func (s *FileStorage) SaveURL(id string, originalURL string) error {
 	return nil
 }
 
-func saveToFileStorage(fname string, storage *FileStorage) error {
-	if err := storage.save(fname); err != nil {
+func saveToFileStorage(s *FileStorage, url *[]ShortenURL) error {
+	if err := s.save(url); err != nil {
 		return err
 	}
 
@@ -58,13 +62,13 @@ func loadStorageFromFile(storage *FileStorage, logger *zap.SugaredLogger) (*File
 	return storage, nil
 }
 
-func (s *FileStorage) save(fname string) error {
-	data, err := json.MarshalIndent(s.urls, "", "   ")
+func (s *FileStorage) save(urls *[]ShortenURL) error {
+	data, err := json.MarshalIndent(urls, "", "   ")
 	if err != nil {
 		return errors.New("marshal indent error")
 	}
 
-	err = os.WriteFile(fname, data, perm600)
+	err = os.WriteFile(s.fileStorage, data, perm600)
 	if err != nil {
 		return errors.New("error write file")
 	}
@@ -82,10 +86,14 @@ func (s *FileStorage) load(fname string, logger *zap.SugaredLogger) error {
 	if err != nil {
 		return fmt.Errorf("unable to read file: %w", err)
 	}
-
-	err = json.Unmarshal(data, &s.urls)
+	var urls []ShortenURL
+	err = json.Unmarshal(data, &urls)
 	if err != nil {
 		return errors.New("unable to unmarshal")
+	}
+
+	for _, v := range urls {
+		s.MemoryStorage.urls[v.ShortURL] = v
 	}
 
 	return nil
@@ -115,7 +123,8 @@ func createFileIfNotExists(fname string, s *FileStorage, logger *zap.SugaredLogg
 			}
 		}(file)
 
-		if err := s.save(fname); err != nil {
+		var urls []ShortenURL
+		if err := s.save(&urls); err != nil {
 			return err
 		}
 	}
