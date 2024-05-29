@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -16,7 +17,15 @@ import (
 
 const lenString = 7
 
-func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage) {
+type BodyRequested struct {
+	URL string `json:"url"`
+}
+
+type BodyResponse struct {
+	ShortURL string `json:"result"`
+}
+
+func GetHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
 	originalURL, ok := storage.GetByID(id)
@@ -29,7 +38,7 @@ func GetHandler(res http.ResponseWriter, req *http.Request, storage *storages.St
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
-func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.Storage, conf *config.Cfg) {
+func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -51,7 +60,13 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 		return
 	}
 
-	storage.SaveURL(rndString, string(u))
+	err = storage.SaveURL(rndString, string(u))
+
+	if err != nil {
+		log.Printf("can't save url: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
 
 	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
 
@@ -70,7 +85,75 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage *storages.S
 	}
 }
 
-func generateRandom(ln int, storage *storages.Storage) (string, error) {
+func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty String!", http.StatusBadRequest)
+		return
+	}
+
+	bodyReq := BodyRequested{}
+
+	body, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		log.Printf("failed to read the request body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.Unmarshal(body, &bodyReq)
+
+	if err != nil {
+		log.Printf("failed to unmarshal body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	rndString, err := generateRandom(lenString, storage)
+
+	if err != nil {
+		log.Printf("can't generate url: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = storage.SaveURL(rndString, bodyReq.URL)
+	if err != nil {
+		log.Printf("can't save url: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	var bodyResp BodyResponse
+
+	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
+
+	if err != nil {
+		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+		return
+	}
+
+	bodyResp.ShortURL = str
+
+	resp, err := json.Marshal(bodyResp)
+
+	if err != nil {
+		log.Printf("failed to marshal result: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+
+	_, err = res.Write(resp)
+	if err != nil {
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+}
+
+func generateRandom(ln int, storage storages.URLStorage) (string, error) {
 	for range 3 {
 		rndString := helpers.RandomString(ln)
 

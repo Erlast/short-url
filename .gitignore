@@ -23,3 +23,5 @@ golangci-lint/
 .idea
 .vscode
 
+/tmp/
+/shortenertestbeta

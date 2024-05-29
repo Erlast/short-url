@@ -1,32 +1,25 @@
 package storages
 
 import (
-	"fmt"
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"go.uber.org/zap"
 )
 
-type Storage struct {
-	urls map[string]string
+type URLStorage interface {
+	SaveURL(id string, originalURL string) error
+	GetByID(id string) (string, error)
+	IsExists(key string) bool
 }
 
-func NewStorage() *Storage {
-	return &Storage{urls: make(map[string]string)}
+type ShortenURL struct {
+	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	ID          int    `json:"uuid"`
 }
 
-func (s *Storage) SaveURL(id string, originalURL string) {
-	s.urls[id] = originalURL
-}
-
-func (s *Storage) GetByID(id string) (string, error) {
-	originalURL, ok := s.urls[id]
-
-	if !ok {
-		return "", fmt.Errorf("short URL %s was not found", id)
+func NewStorage(cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
+	if cfg.FileStorage != "" {
+		return NewFileStorage(cfg.FileStorage, logger)
 	}
-
-	return originalURL, nil
-}
-
-func (s *Storage) IsExists(key string) bool {
-	_, ok := s.urls[key]
-	return ok
+	return NewMemoryStorage()
 }

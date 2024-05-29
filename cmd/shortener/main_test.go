@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,49 +16,91 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/handlers"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/Erlast/short-url.git/internal/app/logger"
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func TestOkPostHandler(t *testing.T) {
+func initTestCfg() (*config.Cfg, storages.URLStorage) {
 	conf := &config.Cfg{
 		FlagRunAddr: ":8080",
 		FlagBaseURL: "http://localhost:8080",
 	}
-
-	store := storages.NewStorage()
-
-	body := "http://somelink.ru"
-
-	request := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(body))
-
-	request.Header.Set("Content-Type", "text/plain")
-
-	w := httptest.NewRecorder()
-	handlers.PostHandler(w, request, store, conf)
-
-	res := w.Result()
-
-	err := res.Body.Close()
+	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		t.Error("Something went wrong")
+		log.Fatal("Running logger fail")
+	}
+	store, err := storages.NewStorage(conf, newLogger)
+
+	if err != nil {
+		fmt.Println("unable to init test config")
 	}
 
-	assert.Equal(t, http.StatusCreated, res.StatusCode)
-	resBody, err := io.ReadAll(res.Body)
+	return conf, store
+}
 
-	require.NoError(t, err)
-	assert.NotEmpty(t, string(resBody))
-	assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+func TestOkPostHandler(t *testing.T) {
+	conf, store := initTestCfg()
+
+	tests := []struct {
+		name        string
+		body        string
+		URL         string
+		contentType string
+		funcName    string
+	}{
+		{
+			name:        "ok post",
+			body:        "http://somelink.ru",
+			URL:         "/",
+			contentType: "text/plain",
+			funcName:    "PostHandler",
+		},
+		{
+			name:        "ok post /api/shorten",
+			body:        `{"url": "http://somelink.ru"}`,
+			URL:         "/api/shorten",
+			contentType: "application/json",
+			funcName:    "PostShortenHandler",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, tt.URL, bytes.NewBufferString(tt.body))
+
+			request.Header.Set("Content-Type", tt.contentType)
+
+			w := httptest.NewRecorder()
+
+			if tt.funcName == "PostHandler" {
+				handlers.PostHandler(w, request, store, conf)
+			}
+
+			if tt.funcName == "PostShortenHandler" {
+				handlers.PostShortenHandler(w, request, store, conf)
+			}
+
+			res := w.Result()
+
+			err := res.Body.Close()
+
+			if err != nil {
+				t.Error("Something went wrong")
+			}
+
+			assert.Equal(t, http.StatusCreated, res.StatusCode)
+			resBody, err := io.ReadAll(res.Body)
+
+			require.NoError(t, err)
+			assert.NotEmpty(t, string(resBody))
+			assert.Equal(t, tt.contentType, res.Header.Get("Content-Type"))
+		})
+	}
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
-	conf := &config.Cfg{
-		FlagRunAddr: ":8080",
-		FlagBaseURL: "http://localhost:8080",
-	}
-
-	store := storages.NewStorage()
+	conf, store := initTestCfg()
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
@@ -79,9 +123,13 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.NewStorage()
+	_, store := initTestCfg()
 
-	store.SaveURL(rndString, "http://somelink.ru")
+	err := store.SaveURL(rndString, "http://somelink.ru")
+
+	if err != nil {
+		fmt.Println("unable to save url")
+	}
 
 	router := chi.NewRouter()
 
@@ -106,9 +154,12 @@ func TestGetHandler(t *testing.T) {
 func TestNotFoundGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	store := storages.NewStorage()
+	_, store := initTestCfg()
 
-	store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
+	err := store.SaveURL(helpers.RandomString(7), "http://somelink.ru")
+	if err != nil {
+		fmt.Println("unable to save url")
+	}
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
 
@@ -119,11 +170,34 @@ func TestNotFoundGetHandler(t *testing.T) {
 
 	res := w.Result()
 
-	err := res.Body.Close()
+	err = res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")
 	}
 
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+}
+
+func TestEmptyBodyPostJSONHandler(t *testing.T) {
+	conf, store := initTestCfg()
+
+	body := ``
+
+	request := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(body))
+
+	request.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handlers.PostShortenHandler(w, request, store, conf)
+
+	res := w.Result()
+
+	err := res.Body.Close()
+
+	if err != nil {
+		t.Error("Something went wrong")
+	}
+
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
 }
