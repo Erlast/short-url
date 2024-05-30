@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
@@ -151,6 +153,32 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
+}
+
+func GetPingHandler(res http.ResponseWriter, req *http.Request, conf *config.Cfg) {
+	db, err := sql.Open("pgx", conf.DatabaseDSN)
+
+	if err != nil {
+		log.Printf("unable to connect database: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Printf("failed to read the request body: %v", err)
+		}
+	}(db)
+
+	err = db.Ping()
+	if err != nil {
+		log.Printf("unable to ping database: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
 }
 
 func generateRandom(ln int, storage storages.URLStorage) (string, error) {

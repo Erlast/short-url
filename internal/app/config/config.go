@@ -11,12 +11,14 @@ type Cfg struct {
 	FlagRunAddr string
 	FlagBaseURL string
 	FileStorage string
+	DatabaseDSN string
 }
 
 type envCfg struct {
 	RunAddr     string `env:"SERVER_ADDRESS"`
 	BaseURL     string `env:"BASE_URL"`
 	FileStorage string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN string `env:"DATABASE_DSN"`
 }
 
 const defaultRunAddr = ":8080"
@@ -28,11 +30,13 @@ func ParseFlags() *Cfg {
 		FlagRunAddr: defaultRunAddr,
 		FlagBaseURL: defaultBaseURL,
 		FileStorage: defaultFileStoragePath,
+		DatabaseDSN: "",
 	}
 
 	flag.StringVar(&config.FlagRunAddr, "a", config.FlagRunAddr, "port to run server")
 	flag.StringVar(&config.FlagBaseURL, "b", config.FlagBaseURL, "base URL")
 	flag.StringVar(&config.FileStorage, "f", config.FileStorage, "file storage path")
+	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "database DSN")
 
 	flag.Parse()
 	cfg := envCfg{}

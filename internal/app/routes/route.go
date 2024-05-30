@@ -40,5 +40,9 @@ func NewRouter(store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredL
 
 	r.Post("/api/shorten", handleShorten)
 
+	r.Get("/ping", func(res http.ResponseWriter, req *http.Request) {
+		handlers.GetPingHandler(res, req, conf)
+	})
+
 	return r
 }
