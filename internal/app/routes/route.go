@@ -22,26 +22,20 @@ func NewRouter(store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredL
 		return middlewares.GzipMiddleware(h, logger)
 	})
 
-	handleGet := func(res http.ResponseWriter, req *http.Request) {
+	r.Get("/{id}", func(res http.ResponseWriter, req *http.Request) {
 		handlers.GetHandler(res, req, store)
-	}
+	})
 
-	r.Get("/{id}", handleGet)
-
-	handlePost := func(res http.ResponseWriter, req *http.Request) {
+	r.Post("/", func(res http.ResponseWriter, req *http.Request) {
 		handlers.PostHandler(res, req, store, conf)
-	}
+	})
 
-	r.Post("/", handlePost)
-
-	handleShorten := func(res http.ResponseWriter, req *http.Request) {
+	r.Post("/api/shorten", func(res http.ResponseWriter, req *http.Request) {
 		handlers.PostShortenHandler(res, req, store, conf)
-	}
-
-	r.Post("/api/shorten", handleShorten)
+	})
 
 	r.Get("/ping", func(res http.ResponseWriter, req *http.Request) {
-		handlers.GetPingHandler(res, req, conf)
+		handlers.GetPingHandler(res, req, store)
 	})
 
 	return r

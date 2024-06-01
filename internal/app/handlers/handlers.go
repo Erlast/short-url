@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -25,6 +24,10 @@ type BodyRequested struct {
 
 type BodyResponse struct {
 	ShortURL string `json:"result"`
+}
+
+type Pinger interface {
+	CheckPing() error
 }
 
 func GetHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
@@ -155,25 +158,16 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 	}
 }
 
-func GetPingHandler(res http.ResponseWriter, req *http.Request, conf *config.Cfg) {
-	db, err := sql.Open("pgx", conf.DatabaseDSN)
-
-	if err != nil {
-		log.Printf("unable to connect database: %v", err)
+func GetPingHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
+	pinger, ok := storage.(Pinger)
+	if !ok {
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Printf("failed to read the request body: %v", err)
-		}
-	}(db)
-
-	err = db.Ping()
+	err := pinger.CheckPing()
 	if err != nil {
-		log.Printf("unable to ping database: %v", err)
+		log.Printf("failed to ping DB: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}

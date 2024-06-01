@@ -18,8 +18,12 @@ type ShortenURL struct {
 }
 
 func NewStorage(cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
-	if cfg.FileStorage != "" {
+	switch {
+	case cfg.DatabaseDSN != "":
+		return NewPgStorage(cfg.DatabaseDSN)
+	case cfg.FileStorage != "":
 		return NewFileStorage(cfg.FileStorage, logger)
+	default:
+		return NewMemoryStorage()
 	}
-	return NewMemoryStorage()
 }
