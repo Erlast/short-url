@@ -175,6 +175,60 @@ func GetPingHandler(res http.ResponseWriter, req *http.Request, storage storages
 	res.WriteHeader(http.StatusOK)
 }
 
+func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty String!", http.StatusBadRequest)
+		return
+	}
+
+	bodyReq := []helpers.Incoming{}
+
+	body, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		log.Printf("failed to read the request body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.Unmarshal(body, &bodyReq)
+
+	if err != nil {
+		log.Printf("failed to unmarshal body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	batch, ok := storage.(helpers.BatchSaver)
+
+	if !ok {
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	result, err := batch.Save(bodyReq, conf.FlagBaseURL)
+	if err != nil {
+		log.Printf("failed to save body: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		log.Printf("failed to marshal result: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	_, err = res.Write(data)
+	if err != nil {
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+}
+
 func generateRandom(ln int, storage storages.URLStorage) (string, error) {
 	for range 3 {
 		rndString := helpers.RandomString(ln)

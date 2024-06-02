@@ -2,7 +2,12 @@ package storages
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log"
+	"net/url"
+
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 type PgStorage struct {
@@ -64,6 +69,59 @@ func (pgs *PgStorage) CheckPing() error {
 		return fmt.Errorf("failed to ping db: %w", err)
 	}
 	return nil
+}
+
+func (pgs *PgStorage) Save(incoming []helpers.Incoming, baseURL string) ([]helpers.Output, error) {
+	length := len(incoming)
+
+	if length == 0 {
+		return nil, errors.New("no incoming URLs found")
+	}
+
+	result := make([]helpers.Output, 0, length)
+
+	tx, err := pgs.db.Begin()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO short_urls(short_url, original_url) VALUES ($1,$2)")
+
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			log.Printf("failed to close statment: %v", err)
+		}
+	}()
+
+	for _, item := range incoming {
+		_, err := stmt.Exec(&item.ShortURL, &item.OriginalURL)
+		if err != nil {
+			_ = tx.Rollback()
+			return nil, fmt.Errorf("failed to insert url: %w", err)
+		}
+
+		str, err := url.JoinPath(baseURL, "/", item.ShortURL)
+
+		if err != nil {
+			_ = tx.Rollback()
+			return nil, fmt.Errorf("failed to join path: %w", err)
+		}
+
+		result = append(result, helpers.Output{ShortURL: str, OriginalURL: item.OriginalURL})
+	}
+	err = tx.Commit()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return result, nil
 }
 
 func (pgs *PgStorage) Close() error {
