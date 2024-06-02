@@ -5,11 +5,11 @@ type BatchSaver interface {
 }
 
 type Output struct {
-	OriginalURL string `json:"correlation_id"`
-	ShortURL    string `json:"short_url"`
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }
 
 type Incoming struct {
-	ShortURL    string `json:"correlation_id"`
-	OriginalURL string `json:"original_url"`
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
 }

@@ -24,8 +24,8 @@ func NewPgStorage(dsn string) (*PgStorage, error) {
 	_, err = db.Exec(`CREATE TABLE 
     IF NOT EXISTS short_urls 
 (id SERIAL PRIMARY KEY, 
-short_url VARCHAR(255) NOT NULL, 
-    original_url TEXT NOT NULL)`)
+short VARCHAR(255) NOT NULL, 
+    original TEXT NOT NULL)`)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table short_urls: %w", err)
@@ -35,7 +35,7 @@ short_url VARCHAR(255) NOT NULL,
 }
 
 func (pgs *PgStorage) SaveURL(id string, originalURL string) error {
-	_, err := pgs.db.Exec("INSERT INTO short_urls(short_url, original_url) VALUES ($1, $2)", id, originalURL)
+	_, err := pgs.db.Exec("INSERT INTO short_urls(short, original) VALUES ($1, $2)", id, originalURL)
 	if err != nil {
 		return fmt.Errorf("unable to save url: %w", err)
 	}
@@ -44,7 +44,7 @@ func (pgs *PgStorage) SaveURL(id string, originalURL string) error {
 
 func (pgs *PgStorage) GetByID(id string) (string, error) {
 	var originalURL string
-	err := pgs.db.QueryRow("SELECT original_url FROM short_urls WHERE short_url = $1", id).Scan(&originalURL)
+	err := pgs.db.QueryRow("SELECT original FROM short_urls WHERE short = $1", id).Scan(&originalURL)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", fmt.Errorf("short URL not found %w", err)
@@ -56,7 +56,7 @@ func (pgs *PgStorage) GetByID(id string) (string, error) {
 
 func (pgs *PgStorage) IsExists(key string) bool {
 	var count int
-	err := pgs.db.QueryRow("SELECT count(original_url) FROM short_urls WHERE short_url = $1", key).Scan(&count)
+	err := pgs.db.QueryRow("SELECT count(original) FROM short_urls WHERE short = $1", key).Scan(&count)
 	if err != nil {
 		_ = fmt.Errorf("failed to get query: %w", err)
 	}
@@ -86,7 +86,7 @@ func (pgs *PgStorage) Save(incoming []helpers.Incoming, baseURL string) ([]helpe
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO short_urls(short_url, original_url) VALUES ($1,$2)")
+	stmt, err := tx.Prepare("INSERT INTO short_urls(short, original) VALUES ($1,$2)")
 
 	if err != nil {
 		_ = tx.Rollback()
@@ -100,20 +100,20 @@ func (pgs *PgStorage) Save(incoming []helpers.Incoming, baseURL string) ([]helpe
 	}()
 
 	for _, item := range incoming {
-		_, err := stmt.Exec(&item.ShortURL, &item.OriginalURL)
+		_, err := stmt.Exec(&item.CorrelationID, &item.OriginalURL)
 		if err != nil {
 			_ = tx.Rollback()
 			return nil, fmt.Errorf("failed to insert url: %w", err)
 		}
 
-		str, err := url.JoinPath(baseURL, "/", item.ShortURL)
+		str, err := url.JoinPath(baseURL, "/", item.CorrelationID)
 
 		if err != nil {
 			_ = tx.Rollback()
 			return nil, fmt.Errorf("failed to join path: %w", err)
 		}
 
-		result = append(result, helpers.Output{ShortURL: str, OriginalURL: item.OriginalURL})
+		result = append(result, helpers.Output{ShortURL: str, CorrelationID: item.CorrelationID})
 	}
 	err = tx.Commit()
 
