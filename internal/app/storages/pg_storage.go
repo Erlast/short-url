@@ -24,7 +24,7 @@ func NewPgStorage(dsn string) (*PgStorage, error) {
 	_, err = db.Exec(`CREATE TABLE 
     IF NOT EXISTS short_urls 
 (id SERIAL PRIMARY KEY, 
-short_url VARCHAR(10) NOT NULL, 
+short_url VARCHAR(255) NOT NULL, 
     original_url TEXT NOT NULL)`)
 
 	if err != nil {
