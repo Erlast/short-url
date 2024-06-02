@@ -38,7 +38,7 @@ func NewRouter(store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredL
 		handlers.GetPingHandler(res, req, store)
 	})
 
-	r.Get("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
+	r.Post("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
 		handlers.BatchShortenHandler(res, req, store, conf)
 	})
 
