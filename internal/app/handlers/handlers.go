@@ -140,7 +140,19 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
-		_, err = res.Write([]byte(str))
+
+		var bodyResp BodyResponse
+		bodyResp.ShortURL = str
+
+		resp, err := json.Marshal(bodyResp)
+
+		if err != nil {
+			log.Printf("failed to marshal result: %v", err)
+			http.Error(res, "", http.StatusInternalServerError)
+			return
+		}
+
+		_, err = res.Write(resp)
 
 		if err != nil {
 			log.Printf("can't generate short url for original url %v", err)
