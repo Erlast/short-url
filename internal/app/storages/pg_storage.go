@@ -7,8 +7,12 @@ import (
 	"log"
 	"net/url"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
+
+const ErrorDBUnique = "23505"
 
 type PgStorage struct {
 	db *sql.DB
@@ -25,7 +29,9 @@ func NewPgStorage(dsn string) (*PgStorage, error) {
     IF NOT EXISTS short_urls 
 (id SERIAL PRIMARY KEY, 
 short VARCHAR(255) NOT NULL, 
-    original TEXT NOT NULL)`)
+    original TEXT NOT NULL,
+    UNIQUE (original)
+    )`)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table short_urls: %w", err)
@@ -37,6 +43,21 @@ short VARCHAR(255) NOT NULL,
 func (pgs *PgStorage) SaveURL(id string, originalURL string) error {
 	_, err := pgs.db.Exec("INSERT INTO short_urls(short, original) VALUES ($1, $2)", id, originalURL)
 	if err != nil {
+		var pgsErr *pgconn.PgError
+		if errors.As(err, &pgsErr) && pgsErr.Code == ErrorDBUnique {
+			var existingShortURL string
+			err = pgs.db.QueryRow(`
+                SELECT short FROM short_urls WHERE original = $1
+            `, originalURL).Scan(&existingShortURL)
+
+			if err != nil {
+				return fmt.Errorf("falied to get short url: %w", err)
+			}
+			return &helpers.ConflictError{
+				ShortURL: existingShortURL,
+				Err:      err,
+			}
+		}
 		return fmt.Errorf("unable to save url: %w", err)
 	}
 	return nil

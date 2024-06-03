@@ -57,7 +57,18 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 		return
 	}
 
-	rndString, err := generateRandom(lenString, storage)
+	rndURL, err := generateURLAndSave(lenString, storage, string(u))
+
+	if errors.Is(err, helpers.ErrConflict) {
+		res.WriteHeader(http.StatusConflict)
+		_, err := res.Write([]byte(rndURL))
+		if err != nil {
+			log.Printf("can't generate short url for original url %v", err)
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+		return
+	}
 
 	if err != nil {
 		log.Printf("can't generate url: %v", err)
@@ -65,15 +76,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 		return
 	}
 
-	err = storage.SaveURL(rndString, string(u))
-
-	if err != nil {
-		log.Printf("can't save url: %v", err)
-		http.Error(res, "", http.StatusInternalServerError)
-		return
-	}
-
-	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
+	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 	if err != nil {
 		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
@@ -114,7 +117,18 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		return
 	}
 
-	rndString, err := generateRandom(lenString, storage)
+	rndURL, err := generateURLAndSave(lenString, storage, bodyReq.URL)
+
+	if errors.Is(err, helpers.ErrConflict) {
+		res.WriteHeader(http.StatusConflict)
+		_, err := res.Write([]byte(rndURL))
+		if err != nil {
+			log.Printf("can't generate short url for original url %v", err)
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+		return
+	}
 
 	if err != nil {
 		log.Printf("can't generate url: %v", err)
@@ -122,16 +136,9 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		return
 	}
 
-	err = storage.SaveURL(rndString, bodyReq.URL)
-	if err != nil {
-		log.Printf("can't save url: %v", err)
-		http.Error(res, "", http.StatusInternalServerError)
-		return
-	}
-
 	var bodyResp BodyResponse
 
-	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndString)
+	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 	if err != nil {
 		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
@@ -238,4 +245,23 @@ func generateRandom(ln int, storage storages.URLStorage) (string, error) {
 		}
 	}
 	return "", errors.New("failed to generate a unique string")
+}
+
+func generateURLAndSave(ln int, storage storages.URLStorage, originalURL string) (string, error) {
+	rndString, err := generateRandom(ln, storage)
+
+	if err != nil {
+		return "", errors.New("failed to generate a random string")
+	}
+	err = storage.SaveURL(rndString, originalURL)
+
+	if err != nil {
+		var conflictErr *helpers.ConflictError
+		if errors.As(err, &conflictErr) {
+			rndString = conflictErr.ShortURL
+		}
+
+		return rndString, helpers.ErrConflict
+	}
+	return rndString, nil
 }
