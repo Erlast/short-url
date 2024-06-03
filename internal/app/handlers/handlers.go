@@ -61,7 +61,14 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
-		_, err := res.Write([]byte(rndURL))
+		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
+
+		if err != nil {
+			http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write([]byte(str))
+
 		if err != nil {
 			log.Printf("can't generate short url for original url %v", err)
 			http.Error(res, "", http.StatusBadRequest)
@@ -121,7 +128,14 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
-		_, err := res.Write([]byte(rndURL))
+		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
+
+		if err != nil {
+			http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write([]byte(str))
+
 		if err != nil {
 			log.Printf("can't generate short url for original url %v", err)
 			http.Error(res, "", http.StatusBadRequest)
