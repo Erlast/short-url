@@ -57,6 +57,8 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 		return
 	}
 
+	res.Header().Set("Content-Type", "text/plain")
+
 	rndURL, err := generateURLAndSave(lenString, storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
@@ -64,7 +66,8 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 		if err != nil {
-			http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+			log.Printf("can't join path %v", err)
+			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
 		_, err = res.Write([]byte(str))
@@ -86,11 +89,11 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 	if err != nil {
-		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+		log.Printf("can't join path %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
-	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 
 	_, err = res.Write([]byte(str))
@@ -124,6 +127,8 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
+
 	rndURL, err := generateURLAndSave(lenString, storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
@@ -131,7 +136,8 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 		if err != nil {
-			http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+			log.Printf("can't join path %v", err)
+			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
 		_, err = res.Write([]byte(str))
@@ -169,7 +175,6 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 
 	_, err = res.Write(resp)
@@ -220,6 +225,8 @@ func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage sto
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
+
 	batch, ok := storage.(helpers.BatchSaver)
 
 	if !ok {
@@ -241,7 +248,6 @@ func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage sto
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(data)
 	if err != nil {
