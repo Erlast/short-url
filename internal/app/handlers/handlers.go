@@ -256,7 +256,7 @@ func BatchShortenHandler(
 
 	res.Header().Set("Content-Type", "application/json")
 
-	result, err := storage.Save(ctx, bodyReq, conf.FlagBaseURL)
+	result, err := storage.LoadURLs(ctx, bodyReq, conf.FlagBaseURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError

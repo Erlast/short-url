@@ -94,7 +94,7 @@ func (pgs *PgStorage) CheckPing(ctx context.Context) error {
 	return nil
 }
 
-func (pgs *PgStorage) Save(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
 	length := len(incoming)
 
 	if length == 0 {

@@ -3,6 +3,7 @@ package storages
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 type MemoryStorage struct {
@@ -30,8 +31,28 @@ func (s *MemoryStorage) GetByID(_ context.Context, id string) (string, error) {
 	return result.OriginalURL, nil
 }
 
-func (s *MemoryStorage) Save(_ context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
-	return make([]Output, 0, 1), nil
+func (s *MemoryStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+	outputs := make([]Output, 0, len(incoming))
+
+	for _, v := range incoming {
+		err := s.SaveURL(ctx, v.CorrelationID, v.OriginalURL)
+		if err != nil {
+			return nil, fmt.Errorf("save batch error: %w", err)
+		}
+
+		shortURL, err := url.JoinPath(baseURL, "/", v.CorrelationID)
+
+		if err != nil {
+			return nil, fmt.Errorf("error getFullShortURL from two parts %w", err)
+		}
+
+		outputs = append(outputs, Output{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      shortURL,
+		})
+	}
+
+	return outputs, nil
 }
 
 func (s *MemoryStorage) IsExists(_ context.Context, key string) bool {

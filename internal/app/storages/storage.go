@@ -12,7 +12,7 @@ type URLStorage interface {
 	SaveURL(ctx context.Context, id string, originalURL string) error
 	GetByID(ctx context.Context, id string) (string, error)
 	IsExists(ctx context.Context, key string) bool
-	Save(context.Context, []Incoming, string) ([]Output, error)
+	LoadURLs(context.Context, []Incoming, string) ([]Output, error)
 }
 
 type Output struct {
