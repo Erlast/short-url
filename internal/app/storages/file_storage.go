@@ -1,6 +1,7 @@
 package storages
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +19,7 @@ type FileStorage struct {
 	fileStorage string
 }
 
-func NewFileStorage(fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
+func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
 	storage, err := loadStorageFromFile(&FileStorage{&MemoryStorage{urls: map[string]ShortenURL{}}, fileStorage}, logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
@@ -26,8 +27,8 @@ func NewFileStorage(fileStorage string, logger *zap.SugaredLogger) (*FileStorage
 	return storage, nil
 }
 
-func (s *FileStorage) SaveURL(id string, originalURL string) error {
-	err := s.MemoryStorage.SaveURL(id, originalURL)
+func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
+	err := s.MemoryStorage.SaveURL(ctx, id, originalURL)
 	if err != nil {
 		return errors.New("unable to save storage")
 	}

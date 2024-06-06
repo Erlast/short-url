@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -27,13 +28,13 @@ type BodyResponse struct {
 }
 
 type Pinger interface {
-	CheckPing() error
+	CheckPing(ctx context.Context) error
 }
 
-func GetHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
+func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, ok := storage.GetByID(id)
+	originalURL, ok := storage.GetByID(ctx, id)
 
 	if ok != nil {
 		http.Error(res, "Not found", http.StatusNotFound)
@@ -43,7 +44,12 @@ func GetHandler(res http.ResponseWriter, req *http.Request, storage storages.URL
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
-func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
+func PostHandler(
+	ctx context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	conf *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -59,7 +65,7 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 
 	res.Header().Set("Content-Type", "text/plain")
 
-	rndURL, err := generateURLAndSave(lenString, storage, string(u))
+	rndURL, err := generateURLAndSave(ctx, lenString, storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -103,7 +109,12 @@ func PostHandler(res http.ResponseWriter, req *http.Request, storage storages.UR
 	}
 }
 
-func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
+func PostShortenHandler(
+	ctx context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	conf *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -129,7 +140,7 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 
 	res.Header().Set("Content-Type", "application/json")
 
-	rndURL, err := generateURLAndSave(lenString, storage, bodyReq.URL)
+	rndURL, err := generateURLAndSave(ctx, lenString, storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -191,19 +202,20 @@ func PostShortenHandler(res http.ResponseWriter, req *http.Request, storage stor
 
 	_, err = res.Write(resp)
 	if err != nil {
+		log.Printf("failed to write body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 }
 
-func GetPingHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
+func GetPingHandler(ctx context.Context, res http.ResponseWriter, _ *http.Request, storage storages.URLStorage) {
 	pinger, ok := storage.(Pinger)
 	if !ok {
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
-	err := pinger.CheckPing()
+	err := pinger.CheckPing(ctx)
 	if err != nil {
 		log.Printf("failed to ping DB: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
@@ -213,13 +225,18 @@ func GetPingHandler(res http.ResponseWriter, req *http.Request, storage storages
 	res.WriteHeader(http.StatusOK)
 }
 
-func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage storages.URLStorage, conf *config.Cfg) {
+func BatchShortenHandler(
+	ctx context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	conf *config.Cfg) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
 	}
 
-	bodyReq := []helpers.Incoming{}
+	var bodyReq []storages.Incoming
 
 	body, err := io.ReadAll(req.Body)
 
@@ -239,15 +256,16 @@ func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage sto
 
 	res.Header().Set("Content-Type", "application/json")
 
-	batch, ok := storage.(helpers.BatchSaver)
+	result, err := storage.Save(ctx, bodyReq, conf.FlagBaseURL)
 
-	if !ok {
-		http.Error(res, "", http.StatusInternalServerError)
-		return
-	}
-
-	result, err := batch.Save(bodyReq, conf.FlagBaseURL)
 	if err != nil {
+		var conflictErr *helpers.ConflictError
+		if errors.As(err, &conflictErr) {
+			res.WriteHeader(http.StatusConflict)
+			log.Printf("some urls not original: %v", err)
+			return
+		}
+
 		log.Printf("failed to save body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
@@ -263,29 +281,30 @@ func BatchShortenHandler(res http.ResponseWriter, req *http.Request, storage sto
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(data)
 	if err != nil {
+		log.Printf("failed to write data: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 }
 
-func generateRandom(ln int, storage storages.URLStorage) (string, error) {
+func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (string, error) {
 	for range 3 {
 		rndString := helpers.RandomString(ln)
 
-		if !storage.IsExists(rndString) {
+		if !storage.IsExists(ctx, rndString) {
 			return rndString, nil
 		}
 	}
 	return "", errors.New("failed to generate a unique string")
 }
 
-func generateURLAndSave(ln int, storage storages.URLStorage, originalURL string) (string, error) {
-	rndString, err := generateRandom(ln, storage)
+func generateURLAndSave(ctx context.Context, ln int, storage storages.URLStorage, originalURL string) (string, error) {
+	rndString, err := generateRandom(ctx, ln, storage)
 
 	if err != nil {
 		return "", errors.New("failed to generate a random string")
 	}
-	err = storage.SaveURL(rndString, originalURL)
+	err = storage.SaveURL(ctx, rndString, originalURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError
