@@ -24,7 +24,8 @@ func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLo
 	storage, err := loadStorageFromFile(
 		&FileStorage{
 			&MemoryStorage{
-				urls: map[string]ShortenURL{}},
+				urls: map[string]ShortenURL{},
+			},
 			logger,
 			fileStorage},
 		logger)

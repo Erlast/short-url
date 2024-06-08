@@ -28,19 +28,19 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Post("/", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostHandler(ctx, res, req, store, conf)
+		handlers.PostHandler(ctx, res, req, store, conf, logger)
 	})
 
 	r.Post("/api/shorten", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostShortenHandler(ctx, res, req, store, conf)
+		handlers.PostShortenHandler(ctx, res, req, store, conf, logger)
 	})
 
 	r.Get("/ping", func(res http.ResponseWriter, req *http.Request) {
-		handlers.GetPingHandler(ctx, res, req, store)
+		handlers.GetPingHandler(ctx, res, store, logger)
 	})
 
 	r.Post("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
-		handlers.BatchShortenHandler(ctx, res, req, store, conf)
+		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger)
 	})
 
 	return r

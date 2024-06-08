@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
@@ -49,7 +49,9 @@ func PostHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
-	conf *config.Cfg) {
+	conf *config.Cfg,
+	logger *zap.SugaredLogger,
+) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -58,7 +60,7 @@ func PostHandler(
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		log.Printf("failed to read the request body: %v", err)
+		logger.Errorf("failed to read the request body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -72,14 +74,14 @@ func PostHandler(
 		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 		if err != nil {
-			log.Printf("can't join path %v", err)
+			logger.Errorf("can't join path %v", err)
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
 		_, err = res.Write([]byte(str))
 
 		if err != nil {
-			log.Printf("can't generate short url for original url %v", err)
+			logger.Errorf("can't generate short url for original url %v", err)
 			http.Error(res, "", http.StatusBadRequest)
 			return
 		}
@@ -87,7 +89,7 @@ func PostHandler(
 	}
 
 	if err != nil {
-		log.Printf("can't generate url: %v", err)
+		logger.Errorf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -95,7 +97,7 @@ func PostHandler(
 	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 	if err != nil {
-		log.Printf("can't join path %v", err)
+		logger.Errorf("can't join path %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -104,6 +106,7 @@ func PostHandler(
 
 	_, err = res.Write([]byte(str))
 	if err != nil {
+		logger.Errorf("can't write body %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -114,7 +117,9 @@ func PostShortenHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
-	conf *config.Cfg) {
+	conf *config.Cfg,
+	logger *zap.SugaredLogger,
+) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -125,7 +130,7 @@ func PostShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		log.Printf("failed to read the request body: %v", err)
+		logger.Errorf("failed to read the request body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -133,7 +138,7 @@ func PostShortenHandler(
 	err = json.Unmarshal(body, &bodyReq)
 
 	if err != nil {
-		log.Printf("failed to unmarshal body: %v", err)
+		logger.Errorf("failed to unmarshal body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -147,7 +152,7 @@ func PostShortenHandler(
 		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 		if err != nil {
-			log.Printf("can't join path %v", err)
+			logger.Errorf("can't join path %v", err)
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
@@ -158,7 +163,7 @@ func PostShortenHandler(
 		resp, err := json.Marshal(bodyResp)
 
 		if err != nil {
-			log.Printf("failed to marshal result: %v", err)
+			logger.Errorf("failed to marshal result: %v", err)
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
@@ -166,7 +171,7 @@ func PostShortenHandler(
 		_, err = res.Write(resp)
 
 		if err != nil {
-			log.Printf("can't generate short url for original url %v", err)
+			logger.Errorf("can't generate short url for original url %v", err)
 			http.Error(res, "", http.StatusBadRequest)
 			return
 		}
@@ -174,7 +179,7 @@ func PostShortenHandler(
 	}
 
 	if err != nil {
-		log.Printf("can't generate url: %v", err)
+		logger.Errorf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -193,7 +198,7 @@ func PostShortenHandler(
 	resp, err := json.Marshal(bodyResp)
 
 	if err != nil {
-		log.Printf("failed to marshal result: %v", err)
+		logger.Errorf("failed to marshal result: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -202,22 +207,28 @@ func PostShortenHandler(
 
 	_, err = res.Write(resp)
 	if err != nil {
-		log.Printf("failed to write body: %v", err)
+		logger.Errorf("failed to write body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 }
 
-func GetPingHandler(ctx context.Context, res http.ResponseWriter, _ *http.Request, storage storages.URLStorage) {
+func GetPingHandler(
+	ctx context.Context,
+	res http.ResponseWriter,
+	storage storages.URLStorage,
+	logger *zap.SugaredLogger,
+) {
 	pinger, ok := storage.(Pinger)
 	if !ok {
+		logger.Errorf("failed to ping DB: %v", ok)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
 	err := pinger.CheckPing(ctx)
 	if err != nil {
-		log.Printf("failed to ping DB: %v", err)
+		logger.Errorf("failed to ping DB: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -230,7 +241,9 @@ func BatchShortenHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
-	conf *config.Cfg) {
+	conf *config.Cfg,
+	logger *zap.SugaredLogger,
+) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
 		return
@@ -241,7 +254,7 @@ func BatchShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		log.Printf("failed to read the request body: %v", err)
+		logger.Errorf("failed to read the request body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -249,7 +262,7 @@ func BatchShortenHandler(
 	err = json.Unmarshal(body, &bodyReq)
 
 	if err != nil {
-		log.Printf("failed to unmarshal body: %v", err)
+		logger.Errorf("failed to unmarshal body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -262,18 +275,17 @@ func BatchShortenHandler(
 		var conflictErr *helpers.ConflictError
 		if errors.As(err, &conflictErr) {
 			res.WriteHeader(http.StatusConflict)
-			log.Printf("some urls not original: %v", err)
 			return
 		}
 
-		log.Printf("failed to save body: %v", err)
+		logger.Errorf("failed to save body: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		log.Printf("failed to marshal result: %v", err)
+		logger.Errorf("failed to marshal result: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -281,7 +293,7 @@ func BatchShortenHandler(
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(data)
 	if err != nil {
-		log.Printf("failed to write data: %v", err)
+		logger.Errorf("failed to write data: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}

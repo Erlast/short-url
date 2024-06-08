@@ -10,16 +10,17 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 type PgStorage struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
 func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
-	conn, err := pgx.Connect(ctx, dsn)
+	conn, err := initPool(ctx, dsn)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
@@ -107,6 +108,14 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
+	defer func(tx pgx.Tx, ctx context.Context) {
+		e := tx.Rollback(ctx)
+		if e != nil {
+			err = fmt.Errorf("failed to rollback the transaction: %w", e)
+		}
+	}(tx, ctx)
+
 	batch := &pgx.Batch{}
 
 	stmt := "INSERT INTO short_urls(short, original) VALUES (@short,@original)"
@@ -117,19 +126,14 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	}
 
 	results := tx.SendBatch(ctx, batch)
-	defer func() {
-		if e := results.Close(); e != nil {
-			err = fmt.Errorf("closing batch results: %w", err)
-		}
 
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			if e := tx.Commit(ctx); e != nil {
-				err = fmt.Errorf("unable to commit: %w", err)
-			}
-		}
-	}()
+	if e := results.Close(); e != nil {
+		err = fmt.Errorf("closing batch results: %w", err)
+	}
+
+	if e := tx.Commit(ctx); e != nil {
+		err = fmt.Errorf("unable to commit: %w", err)
+	}
 
 	for _, item := range incoming {
 		_, err := results.Exec()
@@ -155,15 +159,28 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	return result, nil
 }
 
-func (pgs *PgStorage) Close(ctx context.Context) error {
+func (pgs *PgStorage) Close() error {
 	if pgs.db == nil {
 		return nil
 	}
 
-	err := pgs.db.Close(ctx)
-	if err != nil {
-		return fmt.Errorf("error closing database connection: %w", err)
-	}
+	pgs.db.Close()
 
 	return nil
+}
+
+func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the DSN: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize a connection pool: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping the DB: %w", err)
+	}
+	return pool, nil
 }

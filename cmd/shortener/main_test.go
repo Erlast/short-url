@@ -45,6 +45,12 @@ func initTestCfg() (*config.Cfg, storages.URLStorage) {
 func TestOkPostHandler(t *testing.T) {
 	conf, store := initTestCfg()
 
+	newLogger, err := logger.NewLogger("info")
+
+	if err != nil {
+		log.Fatal("Running logger fail")
+	}
+
 	tests := []struct {
 		name        string
 		body        string
@@ -78,11 +84,11 @@ func TestOkPostHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			if tt.funcName == "PostHandler" {
-				handlers.PostHandler(ctx, w, request, store, conf)
+				handlers.PostHandler(ctx, w, request, store, conf, newLogger)
 			}
 
 			if tt.funcName == "PostShortenHandler" {
-				handlers.PostShortenHandler(ctx, w, request, store, conf)
+				handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
 			}
 
 			res := w.Result()
@@ -106,17 +112,22 @@ func TestOkPostHandler(t *testing.T) {
 func TestEmptyBodyPostHandler(t *testing.T) {
 	conf, store := initTestCfg()
 	ctx := context.Background()
+	newLogger, err := logger.NewLogger("info")
+
+	if err != nil {
+		log.Fatal("Running logger fail")
+	}
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.PostHandler(ctx, w, request, store, conf)
+	handlers.PostHandler(ctx, w, request, store, conf, newLogger)
 
 	res := w.Result()
 
-	err := res.Body.Close()
+	err = res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")
@@ -190,6 +201,11 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	conf, store := initTestCfg()
 
 	ctx := context.Background()
+	newLogger, err := logger.NewLogger("info")
+
+	if err != nil {
+		log.Fatal("Running logger fail")
+	}
 
 	body := ``
 
@@ -198,11 +214,11 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	handlers.PostShortenHandler(ctx, w, request, store, conf)
+	handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
 
 	res := w.Result()
 
-	err := res.Body.Close()
+	err = res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")
