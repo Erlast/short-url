@@ -104,7 +104,16 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 
 	result := make([]Output, 0, length)
 
+	batch := &pgx.Batch{}
+	stmt := "INSERT INTO short_urls(short, original) VALUES (@short,@original)"
+
+	for _, item := range incoming {
+		args := pgx.NamedArgs{"short": item.CorrelationID, "original": item.OriginalURL}
+		batch.Queue(stmt, args)
+	}
+
 	tx, err := pgs.db.Begin(ctx)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -116,24 +125,14 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 		}
 	}(tx, ctx)
 
-	batch := &pgx.Batch{}
-
-	stmt := "INSERT INTO short_urls(short, original) VALUES (@short,@original)"
-
-	for _, item := range incoming {
-		args := pgx.NamedArgs{"short": item.CorrelationID, "original": item.OriginalURL}
-		batch.Queue(stmt, args)
-	}
-
 	results := tx.SendBatch(ctx, batch)
 
-	if e := results.Close(); e != nil {
-		err = fmt.Errorf("closing batch results: %w", err)
-	}
-
-	if e := tx.Commit(ctx); e != nil {
-		err = fmt.Errorf("unable to commit: %w", err)
-	}
+	defer func(results pgx.BatchResults) {
+		e := results.Close()
+		if e != nil {
+			err = fmt.Errorf("closing batch results: %w", e)
+		}
+	}(results)
 
 	for _, item := range incoming {
 		_, err := results.Exec()
@@ -154,6 +153,10 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 			return nil, fmt.Errorf("unable to create path: %w", err)
 		}
 		result = append(result, Output{ShortURL: str, CorrelationID: item.CorrelationID})
+	}
+
+	if e := tx.Commit(ctx); e != nil {
+		err = fmt.Errorf("unable to commit: %w", err)
 	}
 
 	return result, nil
