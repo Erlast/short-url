@@ -118,19 +118,24 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
+	defer func() {
+		if e := tx.Rollback(ctx); e != nil {
+			err = fmt.Errorf("failed to rollback the transaction: %w", e)
+			return
+		}
+	}()
+
 	results := tx.SendBatch(ctx, batch)
 
 	defer func() {
 		if e := results.Close(); e != nil {
 			err = fmt.Errorf("closing batch results error: %w", e)
+			return
 		}
 
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			if e := tx.Commit(ctx); e != nil {
-				err = e
-			}
+		if e := tx.Commit(ctx); e != nil {
+			err = fmt.Errorf("unable to commit: %w", e)
+			return
 		}
 	}()
 
