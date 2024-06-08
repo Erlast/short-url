@@ -118,21 +118,21 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func(tx pgx.Tx, ctx context.Context) {
-		e := tx.Rollback(ctx)
-		if e != nil {
-			err = fmt.Errorf("failed to rollback the transaction: %w", e)
-		}
-	}(tx, ctx)
-
 	results := tx.SendBatch(ctx, batch)
 
-	defer func(results pgx.BatchResults) {
-		e := results.Close()
-		if e != nil {
-			err = fmt.Errorf("closing batch results: %w", e)
+	defer func() {
+		if e := results.Close(); e != nil {
+			err = fmt.Errorf("closing batch results error: %w", e)
 		}
-	}(results)
+
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		} else {
+			if e := tx.Commit(ctx); e != nil {
+				err = e
+			}
+		}
+	}()
 
 	for _, item := range incoming {
 		_, err := results.Exec()
@@ -153,10 +153,6 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 			return nil, fmt.Errorf("unable to create path: %w", err)
 		}
 		result = append(result, Output{ShortURL: str, CorrelationID: item.CorrelationID})
-	}
-
-	if e := tx.Commit(ctx); e != nil {
-		err = fmt.Errorf("unable to commit: %w", err)
 	}
 
 	return result, nil
