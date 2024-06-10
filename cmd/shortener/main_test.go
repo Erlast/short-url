@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/handlers"
@@ -20,7 +20,9 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func initTestCfg() (*config.Cfg, storages.URLStorage) {
+func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLogger) {
+	t.Helper()
+
 	conf := &config.Cfg{
 		FlagRunAddr: ":8080",
 		FlagBaseURL: "http://localhost:8080",
@@ -30,25 +32,21 @@ func initTestCfg() (*config.Cfg, storages.URLStorage) {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		fmt.Println("Running logger fail")
+		t.Errorf("failed to initialize test cfg (logger): %v", err)
+		return nil, nil, nil
 	}
 	store, err := storages.NewStorage(ctx, conf, newLogger)
 
 	if err != nil {
-		fmt.Println("unable to init test config")
+		t.Errorf("failed to initialize test cfg (storage): %v", err)
+		return nil, nil, nil
 	}
 
-	return conf, store
+	return conf, store, newLogger
 }
 
 func TestOkPostHandler(t *testing.T) {
-	conf, store := initTestCfg()
-
-	newLogger, err := logger.NewLogger("info")
-
-	if err != nil {
-		fmt.Println("Running logger fail")
-	}
+	conf, store, newLogger := initTestCfg(t)
 
 	tests := []struct {
 		name        string
@@ -109,13 +107,8 @@ func TestOkPostHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
-	conf, store := initTestCfg()
+	conf, store, newLogger := initTestCfg(t)
 	ctx := context.Background()
-	newLogger, err := logger.NewLogger("info")
-
-	if err != nil {
-		fmt.Println("Running logger fail")
-	}
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
@@ -126,7 +119,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 
 	res := w.Result()
 
-	err = res.Body.Close()
+	err := res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")
@@ -138,13 +131,13 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	_, store := initTestCfg()
+	_, store, _ := initTestCfg(t)
 	ctx := context.Background()
 
 	err := store.SaveURL(ctx, rndString, "http://somelink.ru")
 
 	if err != nil {
-		fmt.Println("unable to save url")
+		t.Errorf("unable to save url")
 	}
 
 	router := chi.NewRouter()
@@ -171,11 +164,11 @@ func TestNotFoundGetHandler(t *testing.T) {
 	ctx := context.Background()
 	rndString := helpers.RandomString(7)
 
-	_, store := initTestCfg()
+	_, store, _ := initTestCfg(t)
 
 	err := store.SaveURL(ctx, helpers.RandomString(7), "http://somelink.ru")
 	if err != nil {
-		fmt.Println("unable to save url")
+		t.Errorf("unable to save url")
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "/"+rndString, http.NoBody)
@@ -197,14 +190,9 @@ func TestNotFoundGetHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostJSONHandler(t *testing.T) {
-	conf, store := initTestCfg()
+	conf, store, newLogger := initTestCfg(t)
 
 	ctx := context.Background()
-	newLogger, err := logger.NewLogger("info")
-
-	if err != nil {
-		fmt.Println("Running logger fail")
-	}
 
 	body := ``
 
@@ -217,7 +205,7 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 
 	res := w.Result()
 
-	err = res.Body.Close()
+	err := res.Body.Close()
 
 	if err != nil {
 		t.Error("Something went wrong")
