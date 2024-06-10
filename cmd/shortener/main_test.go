@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +30,7 @@ func initTestCfg() (*config.Cfg, storages.URLStorage) {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		log.Fatal("Running logger fail")
+		fmt.Println("Running logger fail")
 	}
 	store, err := storages.NewStorage(ctx, conf, newLogger)
 
@@ -48,7 +47,7 @@ func TestOkPostHandler(t *testing.T) {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		log.Fatal("Running logger fail")
+		fmt.Println("Running logger fail")
 	}
 
 	tests := []struct {
@@ -115,7 +114,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		log.Fatal("Running logger fail")
+		fmt.Println("Running logger fail")
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
@@ -204,7 +203,7 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
-		log.Fatal("Running logger fail")
+		fmt.Println("Running logger fail")
 	}
 
 	body := ``

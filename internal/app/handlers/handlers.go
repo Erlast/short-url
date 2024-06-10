@@ -81,8 +81,7 @@ func PostHandler(
 		_, err = res.Write([]byte(str))
 
 		if err != nil {
-			logger.Errorf("can't generate short url for original url %v", err)
-			http.Error(res, "", http.StatusBadRequest)
+			http.Error(res, "can't generate short url for original url", http.StatusBadRequest)
 			return
 		}
 		return
@@ -171,8 +170,7 @@ func PostShortenHandler(
 		_, err = res.Write(resp)
 
 		if err != nil {
-			logger.Errorf("can't generate short url for original url %v", err)
-			http.Error(res, "", http.StatusBadRequest)
+			http.Error(res, "can't generate short url for original url", http.StatusBadRequest)
 			return
 		}
 		return
@@ -189,7 +187,8 @@ func PostShortenHandler(
 	str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
 
 	if err != nil {
-		http.Error(res, "Не удалось сформировать путь", http.StatusInternalServerError)
+		logger.Errorf("can't join path: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
