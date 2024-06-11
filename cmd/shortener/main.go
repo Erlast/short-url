@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -12,6 +13,7 @@ import (
 
 func main() {
 	conf := config.ParseFlags()
+	ctx := context.Background()
 
 	newLogger, err := logger.NewLogger("info")
 
@@ -19,12 +21,12 @@ func main() {
 		log.Fatal("Running logger fail")
 	}
 
-	store, err := storages.NewStorage(conf, newLogger)
+	store, err := storages.NewStorage(ctx, conf, newLogger)
 	if err != nil {
 		newLogger.Fatalf("Unable to create storage %v: ", err)
 	}
 
-	r := routes.NewRouter(store, conf, newLogger)
+	r := routes.NewRouter(ctx, store, conf, newLogger)
 
 	newLogger.Info("Running server address ", conf.FlagRunAddr)
 
