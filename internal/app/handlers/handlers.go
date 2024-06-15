@@ -331,7 +331,7 @@ func GetUserUrls(
 
 	setHeader(res, "application/json")
 
-	res.WriteHeader(http.StatusCreated)
+	res.WriteHeader(http.StatusOK)
 	_, err = res.Write(data)
 	if err != nil {
 		logger.Errorf("failed to write data: %v", err)
