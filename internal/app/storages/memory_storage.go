@@ -14,9 +14,9 @@ func NewMemoryStorage(_ context.Context) (*MemoryStorage, error) {
 	store := &MemoryStorage{urls: map[string]ShortenURL{}}
 	return store, nil
 }
-func (s *MemoryStorage) SaveURL(_ context.Context, id string, originalURL string) error {
+func (s *MemoryStorage) SaveURL(_ context.Context, id string, originalURL string, user *CurrentUser) error {
 	uuid := len(s.urls) + 1
-	s.urls[id] = ShortenURL{originalURL, id, uuid}
+	s.urls[id] = ShortenURL{user, originalURL, id, uuid}
 
 	return nil
 }
@@ -31,11 +31,16 @@ func (s *MemoryStorage) GetByID(_ context.Context, id string) (string, error) {
 	return result.OriginalURL, nil
 }
 
-func (s *MemoryStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+func (s *MemoryStorage) LoadURLs(
+	ctx context.Context,
+	incoming []Incoming,
+	baseURL string,
+	user *CurrentUser,
+) ([]Output, error) {
 	outputs := make([]Output, 0, len(incoming))
 
 	for _, v := range incoming {
-		err := s.SaveURL(ctx, v.CorrelationID, v.OriginalURL)
+		err := s.SaveURL(ctx, v.CorrelationID, v.OriginalURL, user)
 		if err != nil {
 			return nil, fmt.Errorf("save batch error: %w", err)
 		}
@@ -58,4 +63,24 @@ func (s *MemoryStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseU
 func (s *MemoryStorage) IsExists(_ context.Context, key string) bool {
 	_, ok := s.urls[key]
 	return ok
+}
+
+func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error) {
+	var result []UserURLs
+
+	for _, v := range s.urls {
+		if v.User.UserID == user.UserID {
+			shortURL, err := url.JoinPath(baseURL, "/", v.ShortURL)
+			if err != nil {
+				return nil, fmt.Errorf("error getFullShortURL from two parts %w", err)
+			}
+			result = append(result, UserURLs{ShortURL: shortURL, OriginalURL: v.OriginalURL})
+		}
+	}
+
+	if len(result) == 0 {
+		return nil, nil
+	}
+
+	return result, nil
 }

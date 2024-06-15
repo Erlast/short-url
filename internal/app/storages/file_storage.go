@@ -35,15 +35,15 @@ func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLo
 	return storage, nil
 }
 
-func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
-	err := s.MemoryStorage.SaveURL(ctx, id, originalURL)
+func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string, user *CurrentUser) error {
+	err := s.MemoryStorage.SaveURL(ctx, id, originalURL, user)
 	if err != nil {
 		return errors.New("unable to save storage")
 	}
 
 	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
-		urls = append(urls, ShortenURL{value.OriginalURL, value.ShortURL, value.ID})
+		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, value.ID})
 	}
 	err = saveToFileStorage(s, &urls)
 	if err != nil {
@@ -53,13 +53,18 @@ func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string
 	return nil
 }
 
-func (s *FileStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+func (s *FileStorage) LoadURLs(
+	ctx context.Context,
+	incoming []Incoming,
+	baseURL string,
+	user *CurrentUser,
+) ([]Output, error) {
 	err := s.load(s.fileStorage, s.logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
 	}
 
-	outputs, err := s.MemoryStorage.LoadURLs(ctx, incoming, baseURL)
+	outputs, err := s.MemoryStorage.LoadURLs(ctx, incoming, baseURL, user)
 
 	if err != nil {
 		return nil, fmt.Errorf("error saving batch infile: %w", err)
@@ -67,7 +72,7 @@ func (s *FileStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
 		lenItems := len(urls) + 1
-		urls = append(urls, ShortenURL{value.OriginalURL, value.ShortURL, lenItems})
+		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems})
 	}
 
 	err = s.save(&urls)

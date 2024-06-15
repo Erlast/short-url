@@ -31,6 +31,7 @@ func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 (id SERIAL PRIMARY KEY, 
 short VARCHAR(255) NOT NULL, 
     original TEXT NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     UNIQUE (original)
     )`
 	_, err = conn.Exec(context.Background(), sqlCreate)
@@ -42,8 +43,9 @@ short VARCHAR(255) NOT NULL,
 	return &PgStorage{db: conn}, nil
 }
 
-func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
-	_, err := pgs.db.Exec(ctx, "INSERT INTO short_urls(short, original) VALUES ($1, $2)", id, originalURL)
+func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string, user *CurrentUser) error {
+	sqlString := "INSERT INTO short_urls(short, original, user_id) VALUES ($1, $2, $3)"
+	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, user.UserID)
 
 	if err != nil {
 		var pgsErr *pgconn.PgError
@@ -95,7 +97,12 @@ func (pgs *PgStorage) CheckPing(ctx context.Context) error {
 	return nil
 }
 
-func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+func (pgs *PgStorage) LoadURLs(
+	ctx context.Context,
+	incoming []Incoming,
+	baseURL string,
+	user *CurrentUser,
+) ([]Output, error) {
 	length := len(incoming)
 
 	if length == 0 {
@@ -105,10 +112,10 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	result := make([]Output, 0, length)
 
 	batch := &pgx.Batch{}
-	stmt := "INSERT INTO short_urls(short, original) VALUES (@short,@original)"
+	stmt := "INSERT INTO short_urls(short, original, user_id) VALUES (@short,@original,@user_id)"
 
 	for _, item := range incoming {
-		args := pgx.NamedArgs{"short": item.CorrelationID, "original": item.OriginalURL}
+		args := pgx.NamedArgs{"short": item.CorrelationID, "original": item.OriginalURL, "user_id": user.UserID}
 		batch.Queue(stmt, args)
 	}
 
@@ -160,6 +167,33 @@ func (pgs *PgStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 		result = append(result, Output{ShortURL: str, CorrelationID: item.CorrelationID})
 	}
 
+	return result, nil
+}
+
+func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error) {
+	var result []UserURLs
+
+	sqlSring := "SELECT short, original FROM short_urls WHERE user_id = $1"
+	rows, err := pgs.db.Query(ctx, sqlSring, user.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user URLs: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userURL UserURLs
+		if err = rows.Scan(
+			&userURL.ShortURL,
+			&userURL.OriginalURL,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		shortURL, err := url.JoinPath(baseURL, "/", userURL.ShortURL)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create path: %w", err)
+		}
+		userURL.ShortURL = shortURL
+		result = append(result, userURL)
+	}
 	return result, nil
 }
 

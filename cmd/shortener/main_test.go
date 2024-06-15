@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -20,7 +21,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLogger) {
+func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLogger, *storages.CurrentUser) {
 	t.Helper()
 
 	conf := &config.Cfg{
@@ -33,20 +34,24 @@ func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLo
 
 	if err != nil {
 		t.Errorf("failed to initialize test cfg (logger): %v", err)
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	store, err := storages.NewStorage(ctx, conf, newLogger)
 
 	if err != nil {
 		t.Errorf("failed to initialize test cfg (storage): %v", err)
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
-	return conf, store, newLogger
+	newUser := &storages.CurrentUser{
+		UserID: uuid.NewString(),
+	}
+
+	return conf, store, newLogger, newUser
 }
 
 func TestOkPostHandler(t *testing.T) {
-	conf, store, newLogger := initTestCfg(t)
+	conf, store, newLogger, user := initTestCfg(t)
 
 	tests := []struct {
 		name        string
@@ -81,11 +86,11 @@ func TestOkPostHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			if tt.funcName == "PostHandler" {
-				handlers.PostHandler(ctx, w, request, store, conf, newLogger)
+				handlers.PostHandler(ctx, w, request, store, conf, newLogger, user)
 			}
 
 			if tt.funcName == "PostShortenHandler" {
-				handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
+				handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger, user)
 			}
 
 			res := w.Result()
@@ -107,7 +112,7 @@ func TestOkPostHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
-	conf, store, newLogger := initTestCfg(t)
+	conf, store, newLogger, user := initTestCfg(t)
 	ctx := context.Background()
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
@@ -115,7 +120,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.PostHandler(ctx, w, request, store, conf, newLogger)
+	handlers.PostHandler(ctx, w, request, store, conf, newLogger, user)
 
 	res := w.Result()
 
@@ -131,10 +136,10 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	_, store, _ := initTestCfg(t)
+	_, store, _, user := initTestCfg(t)
 	ctx := context.Background()
 
-	err := store.SaveURL(ctx, rndString, "http://somelink.ru")
+	err := store.SaveURL(ctx, rndString, "http://somelink.ru", user)
 
 	if err != nil {
 		t.Errorf("unable to save url")
@@ -164,9 +169,9 @@ func TestNotFoundGetHandler(t *testing.T) {
 	ctx := context.Background()
 	rndString := helpers.RandomString(7)
 
-	_, store, _ := initTestCfg(t)
+	_, store, _, user := initTestCfg(t)
 
-	err := store.SaveURL(ctx, helpers.RandomString(7), "http://somelink.ru")
+	err := store.SaveURL(ctx, helpers.RandomString(7), "http://somelink.ru", user)
 	if err != nil {
 		t.Errorf("unable to save url")
 	}
@@ -190,7 +195,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostJSONHandler(t *testing.T) {
-	conf, store, newLogger := initTestCfg(t)
+	conf, store, newLogger, user := initTestCfg(t)
 
 	ctx := context.Background()
 
@@ -201,7 +206,7 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
+	handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger, user)
 
 	res := w.Result()
 

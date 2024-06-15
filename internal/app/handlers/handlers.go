@@ -18,6 +18,7 @@ import (
 )
 
 const lenString = 7
+const marshalErrorTmp = "failed to marshal result: %v"
 
 type BodyRequested struct {
 	URL string `json:"url"`
@@ -51,6 +52,7 @@ func PostHandler(
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
+	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -65,9 +67,9 @@ func PostHandler(
 		return
 	}
 
-	res.Header().Set("Content-Type", "text/plain")
+	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, string(u))
+	rndURL, err := generateURLAndSave(ctx, lenString, storage, string(u), user)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -118,6 +120,7 @@ func PostShortenHandler(
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
+	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -142,9 +145,9 @@ func PostShortenHandler(
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
+	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, bodyReq.URL)
+	rndURL, err := generateURLAndSave(ctx, lenString, storage, bodyReq.URL, user)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -162,7 +165,7 @@ func PostShortenHandler(
 		resp, err := json.Marshal(bodyResp)
 
 		if err != nil {
-			logger.Errorf("failed to marshal result: %v", err)
+			logger.Errorf(marshalErrorTmp, err)
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
@@ -197,7 +200,7 @@ func PostShortenHandler(
 	resp, err := json.Marshal(bodyResp)
 
 	if err != nil {
-		logger.Errorf("failed to marshal result: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -242,6 +245,7 @@ func BatchShortenHandler(
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
+	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -261,14 +265,13 @@ func BatchShortenHandler(
 	err = json.Unmarshal(body, &bodyReq)
 
 	if err != nil {
-		logger.Errorf("failed to unmarshal body: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
+	setHeader(res, "application/json")
 
-	res.Header().Set("Content-Type", "application/json")
-
-	result, err := storage.LoadURLs(ctx, bodyReq, conf.FlagBaseURL)
+	result, err := storage.LoadURLs(ctx, bodyReq, conf.FlagBaseURL, user)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError
@@ -284,7 +287,7 @@ func BatchShortenHandler(
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		logger.Errorf("failed to marshal result: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -298,6 +301,49 @@ func BatchShortenHandler(
 	}
 }
 
+func GetUserUrls(
+	ctx context.Context,
+	res http.ResponseWriter,
+	storage storages.URLStorage,
+	conf *config.Cfg,
+	logger *zap.SugaredLogger,
+	user *storages.CurrentUser,
+) {
+	result, err := storage.GetUserURLs(ctx, conf.FlagBaseURL, user)
+
+	if err != nil {
+		logger.Errorf("failed to get user URLs: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	if result == nil {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		logger.Errorf(marshalErrorTmp, err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	setHeader(res, "application/json")
+
+	res.WriteHeader(http.StatusCreated)
+	_, err = res.Write(data)
+	if err != nil {
+		logger.Errorf("failed to write data: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+}
+
+func setHeader(res http.ResponseWriter, value string) {
+	res.Header().Set("Content-Type", value)
+}
+
 func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (string, error) {
 	for range 3 {
 		rndString := helpers.RandomString(ln)
@@ -309,13 +355,19 @@ func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (s
 	return "", errors.New("failed to generate a unique string")
 }
 
-func generateURLAndSave(ctx context.Context, ln int, storage storages.URLStorage, originalURL string) (string, error) {
+func generateURLAndSave(
+	ctx context.Context,
+	ln int,
+	storage storages.URLStorage,
+	originalURL string,
+	user *storages.CurrentUser,
+) (string, error) {
 	rndString, err := generateRandom(ctx, ln, storage)
 
 	if err != nil {
 		return "", errors.New("failed to generate a random string")
 	}
-	err = storage.SaveURL(ctx, rndString, originalURL)
+	err = storage.SaveURL(ctx, rndString, originalURL, user)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError

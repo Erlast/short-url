@@ -16,6 +16,9 @@ import (
 func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 
+	currentUser := &storages.CurrentUser{}
+
+	r.Use(func(h http.Handler) http.Handler { return middlewares.AuthMiddleware(h, logger, currentUser) })
 	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.WithLogging(h, logger)
 	})
@@ -28,11 +31,11 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Post("/", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostHandler(ctx, res, req, store, conf, logger)
+		handlers.PostHandler(ctx, res, req, store, conf, logger, currentUser)
 	})
 
 	r.Post("/api/shorten", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostShortenHandler(ctx, res, req, store, conf, logger)
+		handlers.PostShortenHandler(ctx, res, req, store, conf, logger, currentUser)
 	})
 
 	r.Get("/ping", func(res http.ResponseWriter, req *http.Request) {
@@ -40,7 +43,11 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Post("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
-		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger)
+		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger, currentUser)
+	})
+
+	r.Get("/api/user/urls", func(res http.ResponseWriter, req *http.Request) {
+		handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
 	})
 
 	return r
