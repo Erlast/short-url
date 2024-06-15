@@ -47,7 +47,7 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Route("/api/user/urls", func(r chi.Router) {
-		r.Use(middlewares.CheckAuthMiddleware)
+		r.Use(func(h http.Handler) http.Handler { return middlewares.CheckAuthMiddleware(h, logger) })
 		r.Get("/", func(res http.ResponseWriter, req *http.Request) {
 			handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
 		})

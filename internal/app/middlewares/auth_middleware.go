@@ -20,6 +20,7 @@ type Claims struct {
 
 const TokenExp = time.Hour * 3
 const SecretKey = "supersecretkey"
+const AccessDeniedErr = "Access denied"
 
 func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.CurrentUser) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
@@ -28,15 +29,16 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 			if errors.Is(err, http.ErrNoCookie) {
 				newToken, err := buildJWTString()
 				if err != nil {
-					logger.Warnw("Failed to build token", "error", err)
+					logger.Errorln("Failed to build token", err)
 					http.Error(resp, "", http.StatusInternalServerError)
 					return
 				}
+				resp.Header().Set("Authorization", newToken)
 				http.SetCookie(resp, &http.Cookie{Name: "token", Value: newToken})
 
 				userID := getUserID(newToken, logger)
 				if userID == "" {
-					http.Error(resp, "Access denied", http.StatusUnauthorized)
+					http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
 					return
 				}
 				user.UserID = userID
@@ -50,8 +52,7 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 
 		userID := getUserID(token.Value, logger)
 		if userID == "" {
-			logger.Warnw("access denied", "error", err)
-			http.Error(resp, "Access denied", http.StatusUnauthorized)
+			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
 			return
 		}
 
@@ -61,13 +62,25 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 	})
 }
 
-func CheckAuthMiddleware(h http.Handler) http.Handler {
+func CheckAuthMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		authorization := req.Header.Get("Authorization")
 		if authorization == "" {
-			http.Error(resp, "Access denied", http.StatusUnauthorized)
+			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
 			return
 		}
+		token, err := req.Cookie("token")
+		if err != nil {
+			logger.Errorln("Failed to get token from cookie", err)
+			http.Error(resp, "", http.StatusInternalServerError)
+			return
+		}
+
+		if authorization != token.Value {
+			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
+			return
+		}
+
 		h.ServeHTTP(resp, req)
 	})
 }
