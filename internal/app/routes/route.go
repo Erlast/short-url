@@ -46,8 +46,11 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger, currentUser)
 	})
 
-	r.Get("/api/user/urls", func(res http.ResponseWriter, req *http.Request) {
-		handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
+	r.Route("/api/user/urls", func(r chi.Router) {
+		r.Use(middlewares.CheckAuthMiddleware)
+		r.Get("/", func(res http.ResponseWriter, req *http.Request) {
+			handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
+		})
 	})
 
 	return r

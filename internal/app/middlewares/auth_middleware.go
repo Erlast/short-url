@@ -50,12 +50,24 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 
 		userID := getUserID(token.Value, logger)
 		if userID == "" {
+			logger.Warnw("access denied", "error", err)
 			http.Error(resp, "Access denied", http.StatusUnauthorized)
 			return
 		}
 
 		user.UserID = userID
 
+		h.ServeHTTP(resp, req)
+	})
+}
+
+func CheckAuthMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		authorization := req.Header.Get("Authorization")
+		if authorization == "" {
+			http.Error(resp, "Access denied", http.StatusUnauthorized)
+			return
+		}
 		h.ServeHTTP(resp, req)
 	})
 }
