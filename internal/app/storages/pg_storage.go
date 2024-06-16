@@ -112,10 +112,21 @@ func (pgs *PgStorage) LoadURLs(
 	result := make([]Output, 0, length)
 
 	batch := &pgx.Batch{}
-	stmt := "INSERT INTO short_urls(short, original, user_id) VALUES (@short,@original,@user_id)"
+	stmt := "INSERT INTO short_urls(short, original, user_id) VALUES (@short,@original,@user_id) returning (short)"
 
 	for _, item := range incoming {
-		args := pgx.NamedArgs{"short": item.CorrelationID, "original": item.OriginalURL, "user_id": user.UserID}
+		var shortURL string
+		for range 3 {
+			rndString := helpers.RandomString(helpers.LenString)
+
+			if !pgs.IsExists(ctx, rndString) {
+				shortURL = rndString
+				continue
+			}
+			return nil, errors.New("failed to generate short url")
+		}
+
+		args := pgx.NamedArgs{"short": shortURL, "original": item.OriginalURL, "user_id": user.UserID}
 		batch.Queue(stmt, args)
 	}
 
@@ -147,7 +158,10 @@ func (pgs *PgStorage) LoadURLs(
 	}()
 
 	for _, item := range incoming {
-		_, err := results.Exec()
+		var short string
+
+		err = results.QueryRow().Scan(&short)
+
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -160,7 +174,7 @@ func (pgs *PgStorage) LoadURLs(
 			return nil, fmt.Errorf("unable to insert row: %w", err)
 		}
 
-		str, err := url.JoinPath(baseURL, "/", item.CorrelationID)
+		str, err := url.JoinPath(baseURL, "/", short)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create path: %w", err)
 		}

@@ -17,7 +17,6 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-const lenString = 7
 const marshalErrorTmp = "failed to marshal result: %v"
 
 type BodyRequested struct {
@@ -69,7 +68,7 @@ func PostHandler(
 
 	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, string(u), user)
+	rndURL, err := generateURLAndSave(ctx, helpers.LenString, storage, string(u), user)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -147,7 +146,7 @@ func PostShortenHandler(
 
 	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, bodyReq.URL, user)
+	rndURL, err := generateURLAndSave(ctx, helpers.LenString, storage, bodyReq.URL, user)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)

@@ -2,8 +2,11 @@ package storages
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 type MemoryStorage struct {
@@ -40,12 +43,22 @@ func (s *MemoryStorage) LoadURLs(
 	outputs := make([]Output, 0, len(incoming))
 
 	for _, v := range incoming {
-		err := s.SaveURL(ctx, v.CorrelationID, v.OriginalURL, user)
+		var short string
+		for range 3 {
+			rndString := helpers.RandomString(helpers.LenString)
+
+			if !s.IsExists(ctx, rndString) {
+				short = rndString
+				continue
+			}
+			return nil, errors.New("failed to generate short url")
+		}
+		err := s.SaveURL(ctx, short, v.OriginalURL, user)
 		if err != nil {
 			return nil, fmt.Errorf("save batch error: %w", err)
 		}
 
-		shortURL, err := url.JoinPath(baseURL, "/", v.CorrelationID)
+		shortURL, err := url.JoinPath(baseURL, "/", short)
 
 		if err != nil {
 			return nil, fmt.Errorf("error getFullShortURL from two parts %w", err)

@@ -4,6 +4,8 @@ import (
 	"math/rand"
 )
 
+const LenString = 7
+
 var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func RandomString(n int) string {
