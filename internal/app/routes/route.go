@@ -51,9 +51,11 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 		r.Get("/", func(res http.ResponseWriter, req *http.Request) {
 			handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
 		})
-		r.Delete("/", func(res http.ResponseWriter, req *http.Request) {
-			handlers.DeleteUserUrls(ctx, res, req, store, logger, currentUser)
-		})
+
+	})
+
+	r.Delete("/api/user/urls", func(res http.ResponseWriter, req *http.Request) {
+		handlers.DeleteUserUrls(ctx, res, req, store, logger, currentUser)
 	})
 
 	return r
