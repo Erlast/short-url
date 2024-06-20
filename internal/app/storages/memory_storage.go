@@ -19,7 +19,7 @@ func NewMemoryStorage(_ context.Context) (*MemoryStorage, error) {
 }
 func (s *MemoryStorage) SaveURL(_ context.Context, id string, originalURL string, user *CurrentUser) error {
 	uuid := len(s.urls) + 1
-	s.urls[id] = ShortenURL{user, originalURL, id, uuid}
+	s.urls[id] = ShortenURL{user, originalURL, id, uuid, false}
 
 	return nil
 }
@@ -29,6 +29,12 @@ func (s *MemoryStorage) GetByID(_ context.Context, id string) (string, error) {
 
 	if !ok {
 		return "", fmt.Errorf("short URL %s was not found", id)
+	}
+
+	if result.IsDeleted {
+		return "", &helpers.IsDeletedError{
+			Err: errors.New("short URL is deleted"),
+		}
 	}
 
 	return result.OriginalURL, nil
@@ -82,7 +88,7 @@ func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *Cur
 	var result []UserURLs
 
 	for _, v := range s.urls {
-		if v.User.UserID == user.UserID {
+		if v.User.UserID == user.UserID && !v.IsDeleted {
 			shortURL, err := url.JoinPath(baseURL, "/", v.ShortURL)
 			if err != nil {
 				return nil, fmt.Errorf("error getFullShortURL from two parts %w", err)
@@ -96,4 +102,19 @@ func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *Cur
 	}
 
 	return result, nil
+}
+
+func (s *MemoryStorage) DeleteUserURLs(_ context.Context, listDeleted []string, user *CurrentUser) error {
+	for _, v := range listDeleted {
+		result, ok := s.urls[v]
+		if !ok {
+			return fmt.Errorf("short URL %s was not found", v)
+		}
+		if result.User.UserID == user.UserID {
+			result.IsDeleted = true
+			s.urls[v] = result
+		}
+	}
+
+	return nil
 }

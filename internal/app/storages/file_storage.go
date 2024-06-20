@@ -43,7 +43,7 @@ func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string
 
 	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
-		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, value.ID})
+		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, value.ID, false})
 	}
 	err = saveToFileStorage(s, &urls)
 	if err != nil {
@@ -72,7 +72,7 @@ func (s *FileStorage) LoadURLs(
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
 		lenItems := len(urls) + 1
-		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems})
+		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems, value.IsDeleted})
 	}
 
 	err = s.save(&urls)
@@ -81,6 +81,23 @@ func (s *FileStorage) LoadURLs(
 	}
 
 	return outputs, nil
+}
+
+func (s *FileStorage) DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error {
+	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, user)
+	if err != nil {
+		return errors.New("unable to delete users")
+	}
+	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
+	for _, value := range s.MemoryStorage.urls {
+		lenItems := len(urls) + 1
+		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems, value.IsDeleted})
+	}
+	err = s.save(&urls)
+	if err != nil {
+		return fmt.Errorf("error saving batch infile: %w", err)
+	}
+	return nil
 }
 
 func saveToFileStorage(s *FileStorage, url *[]ShortenURL) error {

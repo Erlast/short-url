@@ -18,6 +18,7 @@ import (
 )
 
 const marshalErrorTmp = "failed to marshal result: %v"
+const readBodyErrorTmp = "failed to read the request body: %v"
 
 type BodyRequested struct {
 	URL string `json:"url"`
@@ -34,9 +35,14 @@ type Pinger interface {
 func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, ok := storage.GetByID(ctx, id)
+	originalURL, err := storage.GetByID(ctx, id)
 
-	if ok != nil {
+	if err != nil {
+		var isDeletedErr *helpers.IsDeletedError
+		if errors.As(err, &isDeletedErr) {
+			res.WriteHeader(http.StatusGone)
+			return
+		}
 		http.Error(res, "Not found", http.StatusNotFound)
 		return
 	}
@@ -61,7 +67,7 @@ func PostHandler(
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -131,7 +137,7 @@ func PostShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -256,7 +262,7 @@ func BatchShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -337,6 +343,40 @@ func GetUserUrls(
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
+}
+
+func DeleteUserUrls(
+	ctx context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	logger *zap.SugaredLogger,
+	user *storages.CurrentUser,
+) {
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty Body!", http.StatusBadRequest)
+		return
+	}
+
+	var bodyReq []string
+
+	err := json.NewDecoder(req.Body).Decode(&bodyReq)
+
+	if err != nil {
+		logger.Errorf(readBodyErrorTmp, err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = storage.DeleteUserURLs(ctx, bodyReq, user)
+
+	if err != nil {
+		logger.Errorf("failed to get delete URLs: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusAccepted)
 }
 
 func setHeader(res http.ResponseWriter, value string) {

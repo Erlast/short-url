@@ -32,6 +32,7 @@ func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 short VARCHAR(255) NOT NULL, 
     original TEXT NOT NULL,
     user_id VARCHAR(255) NOT NULL,
+    is_deleted BOOLEAN default FALSE,
     UNIQUE (original)
     )`
 	_, err = conn.Exec(context.Background(), sqlCreate)
@@ -44,8 +45,8 @@ short VARCHAR(255) NOT NULL,
 }
 
 func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string, user *CurrentUser) error {
-	sqlString := "INSERT INTO short_urls(short, original, user_id) VALUES ($1, $2, $3)"
-	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, user.UserID)
+	sqlString := "INSERT INTO short_urls(short, original, user_id, is_deleted) VALUES ($1, $2, $3, $4)"
+	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, user.UserID, false)
 
 	if err != nil {
 		var pgsErr *pgconn.PgError
@@ -70,12 +71,21 @@ func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string
 
 func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 	var originalURL string
-	err := pgs.db.QueryRow(ctx, "SELECT original FROM short_urls WHERE short = $1", id).Scan(&originalURL)
+	var isDeleted bool
+	err := pgs.db.QueryRow(ctx, "SELECT original, is_deleted FROM short_urls WHERE short = $1", id).Scan(
+		&originalURL,
+		&isDeleted,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("short URL not found %w", err)
 		}
 		return "", fmt.Errorf("failed to get query: %w", err)
+	}
+	if isDeleted {
+		return "", &helpers.IsDeletedError{
+			Err: errors.New("short URL is deleted"),
+		}
 	}
 	return originalURL, nil
 }
@@ -209,6 +219,41 @@ func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string, user *Cur
 		result = append(result, userURL)
 	}
 	return result, nil
+}
+
+func (pgs *PgStorage) DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error {
+	batch := &pgx.Batch{}
+	for _, shortURL := range listDeleted {
+		batch.Queue("UPDATE short_urls set is_deleted=true WHERE short = $1 and user_id=$2", shortURL, user.UserID)
+	}
+
+	tx, err := pgs.db.Begin(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if e := tx.Rollback(ctx); e != nil {
+			err = fmt.Errorf("failed to rollback the transaction: %w", e)
+			return
+		}
+	}()
+
+	results := tx.SendBatch(ctx, batch)
+
+	defer func() {
+		if e := results.Close(); e != nil {
+			err = fmt.Errorf("closing batch results error: %w", e)
+			return
+		}
+
+		if e := tx.Commit(ctx); e != nil {
+			err = fmt.Errorf("unable to commit: %w", e)
+			return
+		}
+	}()
+	return nil
 }
 
 func (pgs *PgStorage) Close() error {

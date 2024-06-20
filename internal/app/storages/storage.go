@@ -14,6 +14,7 @@ type URLStorage interface {
 	IsExists(ctx context.Context, key string) bool
 	LoadURLs(context.Context, []Incoming, string, *CurrentUser) ([]Output, error)
 	GetUserURLs(ctx context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error)
+	DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error
 }
 
 type Output struct {
@@ -31,6 +32,7 @@ type ShortenURL struct {
 	OriginalURL string       `json:"original_url"`
 	ShortURL    string       `json:"short_url"`
 	ID          int          `json:"uuid"`
+	IsDeleted   bool         `json:"is_deleted"`
 }
 
 type UserURLs struct {
