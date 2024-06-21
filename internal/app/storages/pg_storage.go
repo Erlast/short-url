@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
@@ -221,7 +222,12 @@ func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string, user *Cur
 	return result, nil
 }
 
-func (pgs *PgStorage) DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error {
+func (pgs *PgStorage) DeleteUserURLs(
+	ctx context.Context,
+	listDeleted []string,
+	_ *zap.SugaredLogger,
+	user *CurrentUser,
+) error {
 	batch := &pgx.Batch{}
 	for _, shortURL := range listDeleted {
 		batch.Queue("UPDATE short_urls set is_deleted=true WHERE short = $1 and user_id=$2", shortURL, user.UserID)

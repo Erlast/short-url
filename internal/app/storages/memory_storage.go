@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sync"
+
+	"go.uber.org/zap"
 
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
@@ -104,17 +107,30 @@ func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *Cur
 	return result, nil
 }
 
-func (s *MemoryStorage) DeleteUserURLs(_ context.Context, listDeleted []string, user *CurrentUser) error {
+func (s *MemoryStorage) DeleteUserURLs(
+	_ context.Context,
+	listDeleted []string,
+	logger *zap.SugaredLogger,
+	user *CurrentUser,
+) error {
+	var wg sync.WaitGroup
 	for _, v := range listDeleted {
-		result, ok := s.urls[v]
-		if !ok {
-			return fmt.Errorf("short URL %s was not found", v)
-		}
-		if result.User.UserID == user.UserID {
-			result.IsDeleted = true
-			s.urls[v] = result
-		}
+		v := v
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, ok := s.urls[v]
+			if !ok {
+				logger.Errorf("short URL %s was not found", v)
+				return
+			}
+			if result.User.UserID == user.UserID {
+				result.IsDeleted = true
+				s.urls[v] = result
+			}
+		}()
 	}
+	wg.Wait()
 
 	return nil
 }

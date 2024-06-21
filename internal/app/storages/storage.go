@@ -14,7 +14,7 @@ type URLStorage interface {
 	IsExists(ctx context.Context, key string) bool
 	LoadURLs(context.Context, []Incoming, string, *CurrentUser) ([]Output, error)
 	GetUserURLs(ctx context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error)
-	DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error
+	DeleteUserURLs(ctx context.Context, listDeleted []string, logger *zap.SugaredLogger, user *CurrentUser) error
 }
 
 type Output struct {

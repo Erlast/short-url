@@ -83,8 +83,13 @@ func (s *FileStorage) LoadURLs(
 	return outputs, nil
 }
 
-func (s *FileStorage) DeleteUserURLs(ctx context.Context, listDeleted []string, user *CurrentUser) error {
-	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, user)
+func (s *FileStorage) DeleteUserURLs(
+	ctx context.Context,
+	listDeleted []string,
+	logger *zap.SugaredLogger,
+	user *CurrentUser,
+) error {
+	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, logger, user)
 	if err != nil {
 		return errors.New("unable to delete users")
 	}

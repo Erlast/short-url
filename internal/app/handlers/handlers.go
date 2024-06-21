@@ -368,7 +368,7 @@ func DeleteUserUrls(
 		return
 	}
 
-	err = storage.DeleteUserURLs(ctx, bodyReq, user)
+	err = storage.DeleteUserURLs(ctx, bodyReq, logger, user)
 
 	if err != nil {
 		logger.Errorf("failed to get delete URLs: %v", err)
