@@ -32,13 +32,13 @@ type Pinger interface {
 	CheckPing(ctx context.Context) error
 }
 
-func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
+func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, err := storage.GetByID(ctx, id)
+	originalURL, err := storage.GetByID(req.Context(), id)
 
 	if err != nil {
-		var isDeletedErr *helpers.IsDeletedError
+		var isDeletedErr *helpers.ConflictError
 		if errors.As(err, &isDeletedErr) {
 			res.WriteHeader(http.StatusGone)
 			return
@@ -51,13 +51,12 @@ func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request,
 }
 
 func PostHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
-	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -74,7 +73,7 @@ func PostHandler(
 
 	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(ctx, helpers.LenString, storage, string(u), user)
+	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -119,13 +118,12 @@ func PostHandler(
 }
 
 func PostShortenHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
-	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -152,7 +150,7 @@ func PostShortenHandler(
 
 	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(ctx, helpers.LenString, storage, bodyReq.URL, user)
+	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -244,13 +242,12 @@ func GetPingHandler(
 }
 
 func BatchShortenHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
-	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty String!", http.StatusBadRequest)
@@ -276,7 +273,7 @@ func BatchShortenHandler(
 	}
 	setHeader(res, "application/json")
 
-	result, err := storage.LoadURLs(ctx, bodyReq, conf.FlagBaseURL, user)
+	result, err := storage.LoadURLs(req.Context(), bodyReq, conf.FlagBaseURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError
@@ -307,14 +304,14 @@ func BatchShortenHandler(
 }
 
 func GetUserUrls(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
+	req *http.Request,
 	storage storages.URLStorage,
 	conf *config.Cfg,
 	logger *zap.SugaredLogger,
-	user *storages.CurrentUser,
 ) {
-	result, err := storage.GetUserURLs(ctx, conf.FlagBaseURL, user)
+	result, err := storage.GetUserURLs(req.Context(), conf.FlagBaseURL)
 
 	if err != nil {
 		logger.Errorf("failed to get user URLs: %v", err)
@@ -346,12 +343,11 @@ func GetUserUrls(
 }
 
 func DeleteUserUrls(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
 	logger *zap.SugaredLogger,
-	user *storages.CurrentUser,
 ) {
 	if req.Body == http.NoBody {
 		http.Error(res, "Empty Body!", http.StatusBadRequest)
@@ -368,7 +364,7 @@ func DeleteUserUrls(
 		return
 	}
 
-	err = storage.DeleteUserURLs(ctx, bodyReq, logger, user)
+	err = storage.DeleteUserURLs(req.Context(), bodyReq, logger)
 
 	if err != nil {
 		logger.Errorf("failed to get delete URLs: %v", err)
@@ -399,14 +395,13 @@ func generateURLAndSave(
 	ln int,
 	storage storages.URLStorage,
 	originalURL string,
-	user *storages.CurrentUser,
 ) (string, error) {
 	rndString, err := generateRandom(ctx, ln, storage)
 
 	if err != nil {
 		return "", errors.New("failed to generate a random string")
 	}
-	err = storage.SaveURL(ctx, rndString, originalURL, user)
+	err = storage.SaveURL(ctx, rndString, originalURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError

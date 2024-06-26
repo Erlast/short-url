@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"go.uber.org/zap"
+
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 const perm600 = 0o600
@@ -35,15 +37,15 @@ func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLo
 	return storage, nil
 }
 
-func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string, user *CurrentUser) error {
-	err := s.MemoryStorage.SaveURL(ctx, id, originalURL, user)
+func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
+	err := s.MemoryStorage.SaveURL(ctx, id, originalURL)
 	if err != nil {
 		return errors.New("unable to save storage")
 	}
 
 	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
-		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, value.ID, false})
+		urls = append(urls, ShortenURL{ctx.Value(helpers.UserID), value.OriginalURL, value.ShortURL, value.ID, false})
 	}
 	err = saveToFileStorage(s, &urls)
 	if err != nil {
@@ -57,14 +59,13 @@ func (s *FileStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
 	baseURL string,
-	user *CurrentUser,
 ) ([]Output, error) {
 	err := s.load(s.fileStorage, s.logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
 	}
 
-	outputs, err := s.MemoryStorage.LoadURLs(ctx, incoming, baseURL, user)
+	outputs, err := s.MemoryStorage.LoadURLs(ctx, incoming, baseURL)
 
 	if err != nil {
 		return nil, fmt.Errorf("error saving batch infile: %w", err)
@@ -72,7 +73,13 @@ func (s *FileStorage) LoadURLs(
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
 		lenItems := len(urls) + 1
-		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems, value.IsDeleted})
+		urls = append(urls, ShortenURL{
+			ctx.Value(helpers.UserID),
+			value.OriginalURL,
+			value.ShortURL,
+			lenItems,
+			value.IsDeleted,
+		})
 	}
 
 	err = s.save(&urls)
@@ -87,16 +94,21 @@ func (s *FileStorage) DeleteUserURLs(
 	ctx context.Context,
 	listDeleted []string,
 	logger *zap.SugaredLogger,
-	user *CurrentUser,
 ) error {
-	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, logger, user)
+	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, logger)
 	if err != nil {
 		return errors.New("unable to delete users")
 	}
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
 		lenItems := len(urls) + 1
-		urls = append(urls, ShortenURL{user, value.OriginalURL, value.ShortURL, lenItems, value.IsDeleted})
+		urls = append(urls, ShortenURL{
+			ctx.Value(helpers.UserID),
+			value.OriginalURL,
+			value.ShortURL,
+			lenItems,
+			value.IsDeleted,
+		})
 	}
 	err = s.save(&urls)
 	if err != nil {

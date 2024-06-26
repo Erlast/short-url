@@ -16,9 +16,9 @@ import (
 func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 
-	currentUser := &storages.CurrentUser{}
-
-	r.Use(func(h http.Handler) http.Handler { return middlewares.AuthMiddleware(h, logger, currentUser) })
+	r.Use(func(h http.Handler) http.Handler {
+		return middlewares.AuthMiddleware(h, logger, conf)
+	})
 	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.WithLogging(h, logger)
 	})
@@ -31,11 +31,11 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Post("/", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostHandler(ctx, res, req, store, conf, logger, currentUser)
+		handlers.PostHandler(ctx, res, req, store, conf, logger)
 	})
 
 	r.Post("/api/shorten", func(res http.ResponseWriter, req *http.Request) {
-		handlers.PostShortenHandler(ctx, res, req, store, conf, logger, currentUser)
+		handlers.PostShortenHandler(ctx, res, req, store, conf, logger)
 	})
 
 	r.Get("/ping", func(res http.ResponseWriter, req *http.Request) {
@@ -43,18 +43,18 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 
 	r.Post("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
-		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger, currentUser)
+		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger)
 	})
 
 	r.Route("/api/user/urls", func(r chi.Router) {
 		r.Use(func(h http.Handler) http.Handler { return middlewares.CheckAuthMiddleware(h, logger) })
 		r.Get("/", func(res http.ResponseWriter, req *http.Request) {
-			handlers.GetUserUrls(ctx, res, store, conf, logger, currentUser)
+			handlers.GetUserUrls(ctx, res, req, store, conf, logger)
 		})
 	})
 
 	r.Delete("/api/user/urls", func(res http.ResponseWriter, req *http.Request) {
-		handlers.DeleteUserUrls(ctx, res, req, store, logger, currentUser)
+		handlers.DeleteUserUrls(ctx, res, req, store, logger)
 	})
 
 	return r

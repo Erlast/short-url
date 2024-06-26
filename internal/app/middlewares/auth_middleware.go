@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,7 +11,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/Erlast/short-url.git/internal/app/storages"
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 type Claims struct {
@@ -18,16 +20,15 @@ type Claims struct {
 	UserID string
 }
 
-const TokenExp = time.Hour * 3
-const SecretKey = "supersecretkey"
-const AccessDeniedErr = "Access denied"
+const tokenExp = time.Hour * 3
+const accessDeniedErr = "Access denied"
 
-func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.CurrentUser) http.Handler {
+func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, cfg *config.Cfg) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		token, err := req.Cookie("token")
 		if err != nil {
 			if errors.Is(err, http.ErrNoCookie) {
-				newToken, err := buildJWTString()
+				newToken, err := buildJWTString(cfg)
 				if err != nil {
 					logger.Errorln("Failed to build token", err)
 					http.Error(resp, "", http.StatusInternalServerError)
@@ -36,12 +37,16 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 				resp.Header().Set("Authorization", newToken)
 				http.SetCookie(resp, &http.Cookie{Name: "token", Value: newToken})
 
-				userID := getUserID(newToken, logger)
+				userID := getUserID(newToken, logger, cfg)
 				if userID == "" {
-					http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
+					http.Error(resp, accessDeniedErr, http.StatusUnauthorized)
 					return
 				}
-				user.UserID = userID
+
+				ctx := context.WithValue(req.Context(), helpers.UserID, userID)
+
+				req = req.WithContext(ctx)
+
 				h.ServeHTTP(resp, req)
 				return
 			}
@@ -50,13 +55,15 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, user *storages.Cu
 			return
 		}
 
-		userID := getUserID(token.Value, logger)
+		userID := getUserID(token.Value, logger, cfg)
 		if userID == "" {
-			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
+			http.Error(resp, accessDeniedErr, http.StatusUnauthorized)
 			return
 		}
 
-		user.UserID = userID
+		ctx := context.WithValue(req.Context(), helpers.UserID, userID)
+
+		req = req.WithContext(ctx)
 
 		h.ServeHTTP(resp, req)
 	})
@@ -66,7 +73,7 @@ func CheckAuthMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		authorization := req.Header.Get("Authorization")
 		if authorization == "" {
-			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
+			http.Error(resp, accessDeniedErr, http.StatusUnauthorized)
 			return
 		}
 		token, err := req.Cookie("token")
@@ -77,7 +84,7 @@ func CheckAuthMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler
 		}
 
 		if authorization != token.Value {
-			http.Error(resp, AccessDeniedErr, http.StatusUnauthorized)
+			http.Error(resp, accessDeniedErr, http.StatusUnauthorized)
 			return
 		}
 
@@ -85,15 +92,15 @@ func CheckAuthMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler
 	})
 }
 
-func buildJWTString() (string, error) {
+func buildJWTString(cfg *config.Cfg) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExp)),
 		},
 		UserID: uuid.NewString(),
 	})
 
-	tokenString, err := token.SignedString([]byte(SecretKey))
+	tokenString, err := token.SignedString([]byte(cfg.SecretKey))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
@@ -101,14 +108,14 @@ func buildJWTString() (string, error) {
 	return tokenString, nil
 }
 
-func getUserID(tokenString string, logger *zap.SugaredLogger) string {
+func getUserID(tokenString string, logger *zap.SugaredLogger, cfg *config.Cfg) string {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(SecretKey), nil
+			return []byte(cfg.SecretKey), nil
 		})
 	if err != nil {
 		return ""

@@ -20,9 +20,9 @@ func NewMemoryStorage(_ context.Context) (*MemoryStorage, error) {
 	store := &MemoryStorage{urls: map[string]ShortenURL{}}
 	return store, nil
 }
-func (s *MemoryStorage) SaveURL(_ context.Context, id string, originalURL string, user *CurrentUser) error {
+func (s *MemoryStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
 	uuid := len(s.urls) + 1
-	s.urls[id] = ShortenURL{user, originalURL, id, uuid, false}
+	s.urls[id] = ShortenURL{ctx.Value(helpers.UserID), originalURL, id, uuid, false}
 
 	return nil
 }
@@ -35,8 +35,8 @@ func (s *MemoryStorage) GetByID(_ context.Context, id string) (string, error) {
 	}
 
 	if result.IsDeleted {
-		return "", &helpers.IsDeletedError{
-			Err: errors.New("short URL is deleted"),
+		return "", &helpers.ConflictError{
+			Err: helpers.NewIsDeletedErr("short url is deleted"),
 		}
 	}
 
@@ -47,7 +47,6 @@ func (s *MemoryStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
 	baseURL string,
-	user *CurrentUser,
 ) ([]Output, error) {
 	outputs := make([]Output, 0, len(incoming))
 
@@ -62,7 +61,7 @@ func (s *MemoryStorage) LoadURLs(
 			}
 			return nil, errors.New("failed to generate short url")
 		}
-		err := s.SaveURL(ctx, short, v.OriginalURL, user)
+		err := s.SaveURL(ctx, short, v.OriginalURL)
 		if err != nil {
 			return nil, fmt.Errorf("save batch error: %w", err)
 		}
@@ -87,11 +86,11 @@ func (s *MemoryStorage) IsExists(_ context.Context, key string) bool {
 	return ok
 }
 
-func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error) {
+func (s *MemoryStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserURLs, error) {
 	var result []UserURLs
 
 	for _, v := range s.urls {
-		if v.User.UserID == user.UserID && !v.IsDeleted {
+		if v.UserID == ctx.Value(helpers.UserID) && !v.IsDeleted {
 			shortURL, err := url.JoinPath(baseURL, "/", v.ShortURL)
 			if err != nil {
 				return nil, fmt.Errorf("error getFullShortURL from two parts %w", err)
@@ -108,10 +107,9 @@ func (s *MemoryStorage) GetUserURLs(_ context.Context, baseURL string, user *Cur
 }
 
 func (s *MemoryStorage) DeleteUserURLs(
-	_ context.Context,
+	ctx context.Context,
 	listDeleted []string,
 	logger *zap.SugaredLogger,
-	user *CurrentUser,
 ) error {
 	var wg sync.WaitGroup
 	for _, v := range listDeleted {
@@ -124,7 +122,7 @@ func (s *MemoryStorage) DeleteUserURLs(
 				logger.Errorf("short URL %s was not found", v)
 				return
 			}
-			if result.User.UserID == user.UserID {
+			if result.UserID == ctx.Value(helpers.UserID) {
 				result.IsDeleted = true
 				s.urls[v] = result
 			}

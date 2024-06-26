@@ -3,10 +3,14 @@ package storages
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"fmt"
 	"net/url"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -20,34 +24,25 @@ type PgStorage struct {
 	db *pgxpool.Pool
 }
 
+//go:embed migrations/*.sql
+var migrationsDir embed.FS
+
 func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
+	if err := runMigrations(dsn); err != nil {
+		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
+	}
 	conn, err := initPool(ctx, dsn)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
 	}
 
-	sqlCreate := `CREATE TABLE 
-    IF NOT EXISTS short_urls 
-(id SERIAL PRIMARY KEY, 
-short VARCHAR(255) NOT NULL, 
-    original TEXT NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
-    is_deleted BOOLEAN default FALSE,
-    UNIQUE (original)
-    )`
-	_, err = conn.Exec(context.Background(), sqlCreate)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create table short_urls: %w", err)
-	}
-
 	return &PgStorage{db: conn}, nil
 }
 
-func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string, user *CurrentUser) error {
+func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
 	sqlString := "INSERT INTO short_urls(short, original, user_id, is_deleted) VALUES ($1, $2, $3, $4)"
-	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, user.UserID, false)
+	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, ctx.Value(helpers.UserID), false)
 
 	if err != nil {
 		var pgsErr *pgconn.PgError
@@ -84,8 +79,8 @@ func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 		return "", fmt.Errorf("failed to get query: %w", err)
 	}
 	if isDeleted {
-		return "", &helpers.IsDeletedError{
-			Err: errors.New("short URL is deleted"),
+		return "", &helpers.ConflictError{
+			Err: helpers.NewIsDeletedErr("short url is deleted"),
 		}
 	}
 	return originalURL, nil
@@ -112,7 +107,6 @@ func (pgs *PgStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
 	baseURL string,
-	user *CurrentUser,
 ) ([]Output, error) {
 	length := len(incoming)
 
@@ -137,7 +131,7 @@ func (pgs *PgStorage) LoadURLs(
 			return nil, errors.New("failed to generate short url")
 		}
 
-		args := pgx.NamedArgs{"short": shortURL, "original": item.OriginalURL, "user_id": user.UserID}
+		args := pgx.NamedArgs{"short": shortURL, "original": item.OriginalURL, "user_id": ctx.Value(helpers.UserID)}
 		batch.Queue(stmt, args)
 	}
 
@@ -195,11 +189,11 @@ func (pgs *PgStorage) LoadURLs(
 	return result, nil
 }
 
-func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string, user *CurrentUser) ([]UserURLs, error) {
+func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserURLs, error) {
 	var result []UserURLs
 
-	sqlSring := "SELECT short, original FROM short_urls WHERE user_id = $1"
-	rows, err := pgs.db.Query(ctx, sqlSring, user.UserID)
+	sqlSring := "SELECT short, original FROM short_urls WHERE user_id = $1 and is_deleted=false"
+	rows, err := pgs.db.Query(ctx, sqlSring, ctx.Value(helpers.UserID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user URLs: %w", err)
 	}
@@ -226,11 +220,14 @@ func (pgs *PgStorage) DeleteUserURLs(
 	ctx context.Context,
 	listDeleted []string,
 	_ *zap.SugaredLogger,
-	user *CurrentUser,
 ) error {
 	batch := &pgx.Batch{}
 	for _, shortURL := range listDeleted {
-		batch.Queue("UPDATE short_urls set is_deleted=true WHERE short = $1 and user_id=$2", shortURL, user.UserID)
+		batch.Queue(
+			"UPDATE short_urls set is_deleted=true WHERE short = $1 and user_id=$2",
+			shortURL,
+			ctx.Value(helpers.UserID),
+		)
 	}
 
 	tx, err := pgs.db.Begin(ctx)
@@ -286,4 +283,22 @@ func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to ping the DB: %w", err)
 	}
 	return pool, nil
+}
+
+func runMigrations(dsn string) error {
+	d, err := iofs.New(migrationsDir, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to return an iofs driver: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
+	if err != nil {
+		return fmt.Errorf("failed to get a new migrate instance: %w", err)
+	}
+	if err := m.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return fmt.Errorf("failed to apply migrations to the DB: %w", err)
+		}
+	}
+	return nil
 }

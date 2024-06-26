@@ -21,7 +21,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLogger, *storages.CurrentUser) {
+func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLogger) {
 	t.Helper()
 
 	conf := &config.Cfg{
@@ -30,28 +30,26 @@ func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLo
 	}
 	ctx := context.Background()
 
+	ctx = context.WithValue(ctx, helpers.UserID, uuid.NewString())
+
 	newLogger, err := logger.NewLogger("info")
 
 	if err != nil {
 		t.Errorf("failed to initialize test cfg (logger): %v", err)
-		return nil, nil, nil, nil
+		return nil, nil, nil
 	}
 	store, err := storages.NewStorage(ctx, conf, newLogger)
 
 	if err != nil {
 		t.Errorf("failed to initialize test cfg (storage): %v", err)
-		return nil, nil, nil, nil
+		return nil, nil, nil
 	}
 
-	newUser := &storages.CurrentUser{
-		UserID: uuid.NewString(),
-	}
-
-	return conf, store, newLogger, newUser
+	return conf, store, newLogger
 }
 
 func TestOkPostHandler(t *testing.T) {
-	conf, store, newLogger, user := initTestCfg(t)
+	conf, store, newLogger := initTestCfg(t)
 
 	tests := []struct {
 		name        string
@@ -86,11 +84,11 @@ func TestOkPostHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			if tt.funcName == "PostHandler" {
-				handlers.PostHandler(ctx, w, request, store, conf, newLogger, user)
+				handlers.PostHandler(ctx, w, request, store, conf, newLogger)
 			}
 
 			if tt.funcName == "PostShortenHandler" {
-				handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger, user)
+				handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
 			}
 
 			res := w.Result()
@@ -112,7 +110,7 @@ func TestOkPostHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostHandler(t *testing.T) {
-	conf, store, newLogger, user := initTestCfg(t)
+	conf, store, newLogger := initTestCfg(t)
 	ctx := context.Background()
 
 	request := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
@@ -120,7 +118,7 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 
 	w := httptest.NewRecorder()
-	handlers.PostHandler(ctx, w, request, store, conf, newLogger, user)
+	handlers.PostHandler(ctx, w, request, store, conf, newLogger)
 
 	res := w.Result()
 
@@ -136,10 +134,10 @@ func TestEmptyBodyPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	rndString := helpers.RandomString(7)
 
-	_, store, _, user := initTestCfg(t)
+	_, store, _ := initTestCfg(t)
 	ctx := context.Background()
 
-	err := store.SaveURL(ctx, rndString, "http://somelink.ru", user)
+	err := store.SaveURL(ctx, rndString, "http://somelink.ru")
 
 	if err != nil {
 		t.Errorf("unable to save url")
@@ -169,9 +167,9 @@ func TestNotFoundGetHandler(t *testing.T) {
 	ctx := context.Background()
 	rndString := helpers.RandomString(7)
 
-	_, store, _, user := initTestCfg(t)
+	_, store, _ := initTestCfg(t)
 
-	err := store.SaveURL(ctx, helpers.RandomString(7), "http://somelink.ru", user)
+	err := store.SaveURL(ctx, helpers.RandomString(7), "http://somelink.ru")
 	if err != nil {
 		t.Errorf("unable to save url")
 	}
@@ -195,7 +193,7 @@ func TestNotFoundGetHandler(t *testing.T) {
 }
 
 func TestEmptyBodyPostJSONHandler(t *testing.T) {
-	conf, store, newLogger, user := initTestCfg(t)
+	conf, store, newLogger := initTestCfg(t)
 
 	ctx := context.Background()
 
@@ -206,7 +204,7 @@ func TestEmptyBodyPostJSONHandler(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger, user)
+	handlers.PostShortenHandler(ctx, w, request, store, conf, newLogger)
 
 	res := w.Result()
 
