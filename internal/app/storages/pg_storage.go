@@ -37,6 +37,8 @@ func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
 	}
 
+	go deleteSoftDeletedRecords(ctx, conn)
+
 	return &PgStorage{db: conn}, nil
 }
 
