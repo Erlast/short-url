@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -28,6 +29,8 @@ func initTestCfg(t *testing.T) (*config.Cfg, storages.URLStorage, *zap.SugaredLo
 		FlagBaseURL: "http://localhost:8080",
 	}
 	ctx := context.Background()
+
+	ctx = context.WithValue(ctx, helpers.UserID, uuid.NewString())
 
 	newLogger, err := logger.NewLogger("info")
 

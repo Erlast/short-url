@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"go.uber.org/zap"
+
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
 const perm600 = 0o600
@@ -43,7 +45,7 @@ func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string
 
 	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
-		urls = append(urls, ShortenURL{value.OriginalURL, value.ShortURL, value.ID})
+		urls = append(urls, ShortenURL{ctx.Value(helpers.UserID), value.OriginalURL, value.ShortURL, value.ID, false})
 	}
 	err = saveToFileStorage(s, &urls)
 	if err != nil {
@@ -53,7 +55,11 @@ func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string
 	return nil
 }
 
-func (s *FileStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL string) ([]Output, error) {
+func (s *FileStorage) LoadURLs(
+	ctx context.Context,
+	incoming []Incoming,
+	baseURL string,
+) ([]Output, error) {
 	err := s.load(s.fileStorage, s.logger)
 	if err != nil {
 		return nil, errors.New("unable to load storage")
@@ -67,7 +73,13 @@ func (s *FileStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
 		lenItems := len(urls) + 1
-		urls = append(urls, ShortenURL{value.OriginalURL, value.ShortURL, lenItems})
+		urls = append(urls, ShortenURL{
+			ctx.Value(helpers.UserID),
+			value.OriginalURL,
+			value.ShortURL,
+			lenItems,
+			value.IsDeleted,
+		})
 	}
 
 	err = s.save(&urls)
@@ -76,6 +88,33 @@ func (s *FileStorage) LoadURLs(ctx context.Context, incoming []Incoming, baseURL
 	}
 
 	return outputs, nil
+}
+
+func (s *FileStorage) DeleteUserURLs(
+	ctx context.Context,
+	listDeleted []string,
+	logger *zap.SugaredLogger,
+) error {
+	err := s.MemoryStorage.DeleteUserURLs(ctx, listDeleted, logger)
+	if err != nil {
+		return errors.New("unable to delete users")
+	}
+	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
+	for _, value := range s.MemoryStorage.urls {
+		lenItems := len(urls) + 1
+		urls = append(urls, ShortenURL{
+			ctx.Value(helpers.UserID),
+			value.OriginalURL,
+			value.ShortURL,
+			lenItems,
+			value.IsDeleted,
+		})
+	}
+	err = s.save(&urls)
+	if err != nil {
+		return fmt.Errorf("error saving batch infile: %w", err)
+	}
+	return nil
 }
 
 func saveToFileStorage(s *FileStorage, url *[]ShortenURL) error {

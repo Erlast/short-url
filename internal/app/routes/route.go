@@ -17,6 +17,9 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	r := chi.NewRouter()
 
 	r.Use(func(h http.Handler) http.Handler {
+		return middlewares.AuthMiddleware(h, logger, conf)
+	})
+	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.WithLogging(h, logger)
 	})
 	r.Use(func(h http.Handler) http.Handler {
@@ -41,6 +44,17 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 
 	r.Post("/api/shorten/batch", func(res http.ResponseWriter, req *http.Request) {
 		handlers.BatchShortenHandler(ctx, res, req, store, conf, logger)
+	})
+
+	r.Route("/api/user/urls", func(r chi.Router) {
+		r.Use(func(h http.Handler) http.Handler { return middlewares.CheckAuthMiddleware(h, logger) })
+		r.Get("/", func(res http.ResponseWriter, req *http.Request) {
+			handlers.GetUserUrls(ctx, res, req, store, conf, logger)
+		})
+	})
+
+	r.Delete("/api/user/urls", func(res http.ResponseWriter, req *http.Request) {
+		handlers.DeleteUserUrls(ctx, res, req, store, logger)
 	})
 
 	return r

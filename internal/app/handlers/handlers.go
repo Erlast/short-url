@@ -17,7 +17,8 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-const lenString = 7
+const marshalErrorTmp = "failed to marshal result: %v"
+const readBodyErrorTmp = "failed to read the request body: %v"
 
 type BodyRequested struct {
 	URL string `json:"url"`
@@ -31,12 +32,17 @@ type Pinger interface {
 	CheckPing(ctx context.Context) error
 }
 
-func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
+func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
-	originalURL, ok := storage.GetByID(ctx, id)
+	originalURL, err := storage.GetByID(req.Context(), id)
 
-	if ok != nil {
+	if err != nil {
+		var isDeletedErr *helpers.ConflictError
+		if errors.As(err, &isDeletedErr) {
+			res.WriteHeader(http.StatusGone)
+			return
+		}
 		http.Error(res, "Not found", http.StatusNotFound)
 		return
 	}
@@ -45,7 +51,7 @@ func GetHandler(ctx context.Context, res http.ResponseWriter, req *http.Request,
 }
 
 func PostHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
@@ -60,14 +66,14 @@ func PostHandler(
 	u, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
 
-	res.Header().Set("Content-Type", "text/plain")
+	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, string(u))
+	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -112,7 +118,7 @@ func PostHandler(
 }
 
 func PostShortenHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
@@ -129,7 +135,7 @@ func PostShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -142,9 +148,9 @@ func PostShortenHandler(
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
+	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(ctx, lenString, storage, bodyReq.URL)
+	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -162,7 +168,7 @@ func PostShortenHandler(
 		resp, err := json.Marshal(bodyResp)
 
 		if err != nil {
-			logger.Errorf("failed to marshal result: %v", err)
+			logger.Errorf(marshalErrorTmp, err)
 			http.Error(res, "", http.StatusInternalServerError)
 			return
 		}
@@ -197,7 +203,7 @@ func PostShortenHandler(
 	resp, err := json.Marshal(bodyResp)
 
 	if err != nil {
-		logger.Errorf("failed to marshal result: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -236,7 +242,7 @@ func GetPingHandler(
 }
 
 func BatchShortenHandler(
-	ctx context.Context,
+	_ context.Context,
 	res http.ResponseWriter,
 	req *http.Request,
 	storage storages.URLStorage,
@@ -253,7 +259,7 @@ func BatchShortenHandler(
 	body, err := io.ReadAll(req.Body)
 
 	if err != nil {
-		logger.Errorf("failed to read the request body: %v", err)
+		logger.Errorf(readBodyErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -261,14 +267,13 @@ func BatchShortenHandler(
 	err = json.Unmarshal(body, &bodyReq)
 
 	if err != nil {
-		logger.Errorf("failed to unmarshal body: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
+	setHeader(res, "application/json")
 
-	res.Header().Set("Content-Type", "application/json")
-
-	result, err := storage.LoadURLs(ctx, bodyReq, conf.FlagBaseURL)
+	result, err := storage.LoadURLs(req.Context(), bodyReq, conf.FlagBaseURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError
@@ -284,7 +289,7 @@ func BatchShortenHandler(
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		logger.Errorf("failed to marshal result: %v", err)
+		logger.Errorf(marshalErrorTmp, err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
@@ -298,6 +303,82 @@ func BatchShortenHandler(
 	}
 }
 
+func GetUserUrls(
+	_ context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	conf *config.Cfg,
+	logger *zap.SugaredLogger,
+) {
+	result, err := storage.GetUserURLs(req.Context(), conf.FlagBaseURL)
+
+	if err != nil {
+		logger.Errorf("failed to get user URLs: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	if result == nil {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		logger.Errorf(marshalErrorTmp, err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	setHeader(res, "application/json")
+
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(data)
+	if err != nil {
+		logger.Errorf("failed to write data: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+}
+
+func DeleteUserUrls(
+	_ context.Context,
+	res http.ResponseWriter,
+	req *http.Request,
+	storage storages.URLStorage,
+	logger *zap.SugaredLogger,
+) {
+	if req.Body == http.NoBody {
+		http.Error(res, "Empty Body!", http.StatusBadRequest)
+		return
+	}
+
+	var bodyReq []string
+
+	err := json.NewDecoder(req.Body).Decode(&bodyReq)
+
+	if err != nil {
+		logger.Errorf(readBodyErrorTmp, err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	err = storage.DeleteUserURLs(req.Context(), bodyReq, logger)
+
+	if err != nil {
+		logger.Errorf("failed to get delete URLs: %v", err)
+		http.Error(res, "", http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusAccepted)
+}
+
+func setHeader(res http.ResponseWriter, value string) {
+	res.Header().Set("Content-Type", value)
+}
+
 func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (string, error) {
 	for range 3 {
 		rndString := helpers.RandomString(ln)
@@ -309,7 +390,12 @@ func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (s
 	return "", errors.New("failed to generate a unique string")
 }
 
-func generateURLAndSave(ctx context.Context, ln int, storage storages.URLStorage, originalURL string) (string, error) {
+func generateURLAndSave(
+	ctx context.Context,
+	ln int,
+	storage storages.URLStorage,
+	originalURL string,
+) (string, error) {
 	rndString, err := generateRandom(ctx, ln, storage)
 
 	if err != nil {

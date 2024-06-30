@@ -12,6 +12,7 @@ type Cfg struct {
 	FlagBaseURL string
 	FileStorage string
 	DatabaseDSN string
+	SecretKey   string
 }
 
 type envCfg struct {
@@ -19,11 +20,13 @@ type envCfg struct {
 	BaseURL     string `env:"BASE_URL"`
 	FileStorage string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN string `env:"DATABASE_DSN"`
+	SecretKey   string `env:"SECRET_KEY"`
 }
 
 const defaultRunAddr = ":8080"
 const defaultBaseURL = "http://localhost:8080"
 const defaultFileStoragePath = "/tmp/short-url-db.json"
+const secretKey = "supersecretkey"
 
 func ParseFlags() *Cfg {
 	config := &Cfg{
@@ -31,12 +34,14 @@ func ParseFlags() *Cfg {
 		FlagBaseURL: defaultBaseURL,
 		FileStorage: defaultFileStoragePath,
 		DatabaseDSN: "",
+		SecretKey:   secretKey,
 	}
 
 	flag.StringVar(&config.FlagRunAddr, "a", config.FlagRunAddr, "port to run server")
 	flag.StringVar(&config.FlagBaseURL, "b", config.FlagBaseURL, "base URL")
 	flag.StringVar(&config.FileStorage, "f", config.FileStorage, "file storage path")
 	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "database DSN")
+	flag.StringVar(&config.SecretKey, "k", config.DatabaseDSN, "secret key")
 
 	flag.Parse()
 	cfg := envCfg{}
@@ -55,6 +60,10 @@ func ParseFlags() *Cfg {
 
 	if len(cfg.FileStorage) != 0 {
 		config.FileStorage = cfg.FileStorage
+	}
+
+	if len(cfg.SecretKey) != 0 {
+		config.SecretKey = cfg.SecretKey
 	}
 
 	return config

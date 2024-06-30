@@ -13,6 +13,8 @@ type URLStorage interface {
 	GetByID(ctx context.Context, id string) (string, error)
 	IsExists(ctx context.Context, key string) bool
 	LoadURLs(context.Context, []Incoming, string) ([]Output, error)
+	GetUserURLs(ctx context.Context, baseURL string) ([]UserURLs, error)
+	DeleteUserURLs(ctx context.Context, listDeleted []string, logger *zap.SugaredLogger) error
 }
 
 type Output struct {
@@ -26,9 +28,16 @@ type Incoming struct {
 }
 
 type ShortenURL struct {
+	UserID      any    `json:"user_id"`
 	OriginalURL string `json:"original_url"`
 	ShortURL    string `json:"short_url"`
 	ID          int    `json:"uuid"`
+	IsDeleted   bool   `json:"is_deleted"`
+}
+
+type UserURLs struct {
+	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
 }
 
 func NewStorage(ctx context.Context, cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
