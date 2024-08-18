@@ -15,7 +15,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
-// Claims содержимое jwt токена
+// Claims содержимое jwt токена.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string
@@ -24,7 +24,7 @@ type Claims struct {
 const tokenExp = time.Hour * 3          // tokenExp время жизни токена
 const accessDeniedErr = "Access denied" // accessDeniedErr шаблон ошибки Доступ запрещен
 
-// AuthMiddleware функция установки jwt токенов в заголовок http запроса и в cookie, если их нет
+// AuthMiddleware функция установки jwt токенов в заголовок http запроса и в cookie, если их нет.
 func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, cfg *config.Cfg) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		token, err := req.Cookie("token")
@@ -71,7 +71,7 @@ func AuthMiddleware(h http.Handler, logger *zap.SugaredLogger, cfg *config.Cfg) 
 	})
 }
 
-// CheckAuthMiddleware функция проверки jwt токенов из заголовков http запроса
+// CheckAuthMiddleware функция проверки jwt токенов из заголовков http запроса.
 func CheckAuthMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		authorization := req.Header.Get("Authorization")

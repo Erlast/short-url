@@ -8,10 +8,10 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-// timeSleep интервал запуска компонента
+// timeSleep интервал запуска компонента.
 var timeSleep = 24 * time.Hour
 
-// DeleteSoftDeletedRecords функция удаления записей из харанилища которые ранее были мягко удалены
+// DeleteSoftDeletedRecords функция удаления записей из харанилища которые ранее были мягко удалены.
 func DeleteSoftDeletedRecords(ctx context.Context, store storages.URLStorage) {
 	for {
 		// Удаляем из хранилища

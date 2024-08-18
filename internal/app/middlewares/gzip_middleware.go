@@ -23,7 +23,7 @@ func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	return size, nil
 }
 
-// GzipMiddleware функция сжатия данных запроса
+// GzipMiddleware функция сжатия данных запроса.
 func GzipMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		contentEncoding := req.Header.Get("Content-Encoding")

@@ -13,7 +13,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-// main настройка приложения
+// main настройка приложения.
 func main() {
 	// Вспомогательная функция для профилирования
 	go func() {

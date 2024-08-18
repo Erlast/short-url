@@ -17,14 +17,14 @@ const perm600 = 0o600                          // perm600 код доступа 
 const perm777 = 0o777                          // perm777 код доступа к файлу (полный доступ)
 const errMsg = "error saving batch infile: %w" // errMsg шаблон ошибки сохранения списка ссылок в файл
 
-// FileStorage хранилище данных в файле
+// FileStorage хранилище данных в файле.
 type FileStorage struct {
 	*MemoryStorage
 	logger      *zap.SugaredLogger
 	fileStorage string
 }
 
-// NewFileStorage инициализация файлового хранилища
+// NewFileStorage инициализация файлового хранилища.
 func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
 	storage, err := loadStorageFromFile(
 		&FileStorage{

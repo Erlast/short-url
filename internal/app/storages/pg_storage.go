@@ -20,7 +20,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
-// PgStorage хранилище БД postgres
+// PgStorage хранилище БД postgres.
 type PgStorage struct {
 	Conn *pgxpool.Pool
 }
@@ -28,7 +28,7 @@ type PgStorage struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
-// NewPgStorage инициализации хранилища postgres
+// NewPgStorage инициализации хранилища postgres.
 func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
@@ -348,7 +348,7 @@ func (pgs *PgStorage) DeleteHard(ctx context.Context) error {
 	return nil
 }
 
-// Close закрытие соединения с хранилищем
+// Close закрытие соединения с хранилищем.
 func (pgs *PgStorage) Close() error {
 	if pgs.Conn == nil {
 		return nil

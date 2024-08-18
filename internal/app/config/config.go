@@ -7,7 +7,7 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-// Cfg структура конфигурации
+// Cfg структура конфигурации.
 type Cfg struct {
 	FlagRunAddr string
 	FlagBaseURL string
@@ -29,7 +29,7 @@ const defaultBaseURL = "http://localhost:8080"          // defaultBaseURL баз
 const defaultFileStoragePath = "/tmp/short-url-db.json" // defaultFileStoragePath файл хранилище
 const secretKey = "supersecretkey"                      // secretKey  секретный ключ для формирования jwt токенов
 
-// ParseFlags функция разбора заданных параметров приложения
+// ParseFlags функция разбора заданных параметров приложения.
 func ParseFlags() *Cfg {
 	config := &Cfg{
 		FlagRunAddr: defaultRunAddr,

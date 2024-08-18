@@ -41,7 +41,7 @@ type URLStorage interface {
 	DeleteHard(ctx context.Context) error
 }
 
-// NewStorage инициализация хранилища в зависимости от настроек приложения
+// NewStorage инициализация хранилища в зависимости от настроек приложения.
 func NewStorage(ctx context.Context, cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
 	switch {
 	case cfg.DatabaseDSN != "":

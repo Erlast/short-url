@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-func ExampleConfig() {
-	config := &Cfg{
+func ExampleCfg() {
+	cfg := &Cfg{
 		FlagRunAddr: ":8080",
 		FlagBaseURL: "http://localhost:8080",
 		FileStorage: "/tmp/short-url-db.json",
@@ -22,11 +22,11 @@ func ExampleConfig() {
 	SecretKey: %q,
 	DatabaseDSN: %q
 }`,
-		config.FlagRunAddr,
-		config.FlagBaseURL,
-		config.FileStorage,
-		config.SecretKey,
-		config.DatabaseDSN,
+		cfg.FlagRunAddr,
+		cfg.FlagBaseURL,
+		cfg.FileStorage,
+		cfg.SecretKey,
+		cfg.DatabaseDSN,
 	)
 
 	fmt.Println(output)

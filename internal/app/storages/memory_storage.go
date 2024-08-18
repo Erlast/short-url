@@ -13,12 +13,12 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
-// MemoryStorage харнилище памяти
+// MemoryStorage харнилище памяти.
 type MemoryStorage struct {
 	urls map[string]ShortenURL
 }
 
-// NewMemoryStorage инициализация хранилища в памяти
+// NewMemoryStorage инициализация хранилища в памяти.
 func NewMemoryStorage(_ context.Context) (*MemoryStorage, error) {
 	store := &MemoryStorage{urls: map[string]ShortenURL{}}
 	return store, nil

@@ -8,7 +8,7 @@ const LenString = 7 // LenString длина генерируемой случа�
 
 var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-// RandomString функция генерации случайно строки длиной n
+// RandomString функция генерации случайно строки длиной n.
 func RandomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {

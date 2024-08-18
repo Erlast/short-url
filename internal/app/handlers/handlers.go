@@ -20,24 +20,24 @@ import (
 const marshalErrorTmp = "failed to marshal result: %v"         // marshalErrorTmp шаблон ошибки парсинга
 const readBodyErrorTmp = "failed to read the request body: %v" // readBodyErrorTmp шаблон ошибки чтения тела запроса
 
-// BodyRequested тело запроса на формирования короткой ссылки
+// BodyRequested тело запроса на формирования короткой ссылки.
 type BodyRequested struct {
 	// URL - url
 	URL string `json:"url"`
 }
 
-// BodyResponse тело ответа с короткой сслыкой
+// BodyResponse тело ответа с короткой сслыкой.
 type BodyResponse struct {
 	// ShortURL = короткая ссылка
 	ShortURL string `json:"result"`
 }
 
-// Pinger интерфейс для проверки состояния хранилища Postgres
+// Pinger интерфейс для проверки состояния хранилища Postgres.
 type Pinger interface {
 	CheckPing(ctx context.Context) error
 }
 
-// GetHandler запрос получения оригинальной ссылки по сокращенному URL
+// GetHandler запрос получения оригинальной ссылки по сокращенному URL.
 func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
@@ -57,7 +57,7 @@ func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, s
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
-// PostHandler запрос на создание короткой ссылки для URL, Content-type: text/plain
+// PostHandler запрос на создание короткой ссылки для URL, Content-type: text/plain.
 func PostHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -127,7 +127,7 @@ func PostHandler(
 	}
 }
 
-// PostShortenHandler получение короткой ссылки для URL, тело в виде JSON
+// PostShortenHandler получение короткой ссылки для URL, тело в виде JSON.
 func PostShortenHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -229,7 +229,7 @@ func PostShortenHandler(
 	}
 }
 
-// GetPingHandler проверка подключения к хранилищу
+// GetPingHandler проверка подключения к хранилищу.
 func GetPingHandler(
 	ctx context.Context,
 	res http.ResponseWriter,
@@ -253,7 +253,7 @@ func GetPingHandler(
 	res.WriteHeader(http.StatusOK)
 }
 
-// BatchShortenHandler запрос на массовое сохранение списка ссылок
+// BatchShortenHandler запрос на массовое сохранение списка ссылок.
 func BatchShortenHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -317,7 +317,7 @@ func BatchShortenHandler(
 	}
 }
 
-// GetUserUrls запрос на получение списка сохраненных пользователем URL
+// GetUserUrls запрос на получение списка сохраненных пользователем URL.
 func GetUserUrls(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -358,7 +358,7 @@ func GetUserUrls(
 	}
 }
 
-// DeleteUserUrls запрос на мягкое удаление ссылок пользователя
+// DeleteUserUrls запрос на мягкое удаление ссылок пользователя.
 func DeleteUserUrls(
 	_ context.Context,
 	res http.ResponseWriter,
