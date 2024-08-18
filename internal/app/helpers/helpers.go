@@ -4,7 +4,7 @@ import (
 	"math/rand"
 )
 
-const LenString = 7 // LenString длина генерируемой случайной строки
+const LenString = 7 // LenString длина генерируемой случайной строки.
 
 var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
