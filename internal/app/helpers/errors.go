@@ -5,8 +5,11 @@ import (
 	"fmt"
 )
 
-var ErrConflict = errors.New("status 409 conflict") // ErrConflict ошибка конфликта записей.
-var ErrIsDeleted = "Short url is deleted"           // ErrIsDeleted оишбка удаления короткой ссылки.
+// ErrConflict ошибка конфликта записей.
+var ErrConflict = errors.New("status 409 conflict")
+
+// ErrIsDeleted оишбка удаления короткой ссылки.
+var ErrIsDeleted = "Short url is deleted"
 
 // ConflictError структура ошибки конфликта коротких ссылок.
 type ConflictError struct {
