@@ -4,7 +4,9 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 
+	"github.com/Erlast/short-url.git/internal/app/components"
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/logger"
 	"github.com/Erlast/short-url.git/internal/app/routes"
@@ -12,6 +14,10 @@ import (
 )
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:8070", nil))
+	}()
+
 	conf := config.ParseFlags()
 	ctx := context.Background()
 
@@ -25,6 +31,8 @@ func main() {
 	if err != nil {
 		newLogger.Fatalf("Unable to create storage %v: ", err)
 	}
+
+	go components.DeleteSoftDeletedRecords(ctx, store)
 
 	r := routes.NewRouter(ctx, store, conf, newLogger)
 

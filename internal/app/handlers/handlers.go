@@ -73,7 +73,7 @@ func PostHandler(
 
 	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, string(u))
+	rndURL, err := generateURLAndSave(req.Context(), storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -150,7 +150,7 @@ func PostShortenHandler(
 
 	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, bodyReq.URL)
+	rndURL, err := generateURLAndSave(req.Context(), storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -330,7 +330,7 @@ func GetUserUrls(
 		http.Error(res, "", http.StatusInternalServerError)
 		return
 	}
-
+	logger.Infof("Marshalled data: %s", string(data))
 	setHeader(res, "application/json")
 
 	res.WriteHeader(http.StatusOK)
@@ -379,29 +379,12 @@ func setHeader(res http.ResponseWriter, value string) {
 	res.Header().Set("Content-Type", value)
 }
 
-func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (string, error) {
-	for range 3 {
-		rndString := helpers.RandomString(ln)
-
-		if !storage.IsExists(ctx, rndString) {
-			return rndString, nil
-		}
-	}
-	return "", errors.New("failed to generate a unique string")
-}
-
 func generateURLAndSave(
 	ctx context.Context,
-	ln int,
 	storage storages.URLStorage,
 	originalURL string,
 ) (string, error) {
-	rndString, err := generateRandom(ctx, ln, storage)
-
-	if err != nil {
-		return "", errors.New("failed to generate a random string")
-	}
-	err = storage.SaveURL(ctx, rndString, originalURL)
+	rndString, err := storage.SaveURL(ctx, originalURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError

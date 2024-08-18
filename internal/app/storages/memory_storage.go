@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"sync"
 
 	"go.uber.org/zap"
@@ -20,11 +21,21 @@ func NewMemoryStorage(_ context.Context) (*MemoryStorage, error) {
 	store := &MemoryStorage{urls: map[string]ShortenURL{}}
 	return store, nil
 }
-func (s *MemoryStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
-	uuid := len(s.urls) + 1
-	s.urls[id] = ShortenURL{ctx.Value(helpers.UserID), originalURL, id, uuid, false}
+func (s *MemoryStorage) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	var shortURL string
+	for range 3 {
+		rndString := helpers.RandomString(helpers.LenString)
 
-	return nil
+		if !s.IsExists(ctx, rndString) {
+			shortURL = rndString
+			continue
+		}
+		return "", errors.New("failed to generate short url")
+	}
+	uuid := len(s.urls) + 1
+	s.urls[shortURL] = ShortenURL{ctx.Value(helpers.UserID), originalURL, shortURL, uuid, false}
+
+	return shortURL, nil
 }
 
 func (s *MemoryStorage) GetByID(_ context.Context, id string) (string, error) {
@@ -51,17 +62,7 @@ func (s *MemoryStorage) LoadURLs(
 	outputs := make([]Output, 0, len(incoming))
 
 	for _, v := range incoming {
-		var short string
-		for range 3 {
-			rndString := helpers.RandomString(helpers.LenString)
-
-			if !s.IsExists(ctx, rndString) {
-				short = rndString
-				continue
-			}
-			return nil, errors.New("failed to generate short url")
-		}
-		err := s.SaveURL(ctx, short, v.OriginalURL)
+		short, err := s.SaveURL(ctx, v.OriginalURL)
 		if err != nil {
 			return nil, fmt.Errorf("save batch error: %w", err)
 		}
@@ -129,6 +130,23 @@ func (s *MemoryStorage) DeleteUserURLs(
 		}()
 	}
 	wg.Wait()
+
+	return nil
+}
+
+func (s *MemoryStorage) DeleteHard(_ context.Context) error {
+	var result []ShortenURL
+
+	for _, v := range s.urls {
+		if !v.IsDeleted {
+			result = append(result, v)
+		}
+	}
+
+	s.urls = make(map[string]ShortenURL)
+	for _, v := range result {
+		s.urls[strconv.Itoa(v.ID)] = v
+	}
 
 	return nil
 }

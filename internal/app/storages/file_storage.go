@@ -15,6 +15,7 @@ import (
 
 const perm600 = 0o600
 const perm777 = 0o777
+const errMsg = "error saving batch infile: %w"
 
 type FileStorage struct {
 	*MemoryStorage
@@ -37,10 +38,10 @@ func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLo
 	return storage, nil
 }
 
-func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
-	err := s.MemoryStorage.SaveURL(ctx, id, originalURL)
+func (s *FileStorage) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	shortURL, err := s.MemoryStorage.SaveURL(ctx, originalURL)
 	if err != nil {
-		return errors.New("unable to save storage")
+		return "", errors.New("unable to save storage")
 	}
 
 	urls := make([]ShortenURL, 0, len(s.MemoryStorage.urls))
@@ -49,10 +50,10 @@ func (s *FileStorage) SaveURL(ctx context.Context, id string, originalURL string
 	}
 	err = saveToFileStorage(s, &urls)
 	if err != nil {
-		return errors.New("unable to save storage")
+		return "", errors.New("unable to save storage")
 	}
 
-	return nil
+	return shortURL, nil
 }
 
 func (s *FileStorage) LoadURLs(
@@ -68,7 +69,7 @@ func (s *FileStorage) LoadURLs(
 	outputs, err := s.MemoryStorage.LoadURLs(ctx, incoming, baseURL)
 
 	if err != nil {
-		return nil, fmt.Errorf("error saving batch infile: %w", err)
+		return nil, fmt.Errorf(errMsg, err)
 	}
 	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
 	for _, value := range s.MemoryStorage.urls {
@@ -84,7 +85,7 @@ func (s *FileStorage) LoadURLs(
 
 	err = s.save(&urls)
 	if err != nil {
-		return nil, fmt.Errorf("error saving batch infile: %w", err)
+		return nil, fmt.Errorf(errMsg, err)
 	}
 
 	return outputs, nil
@@ -112,7 +113,30 @@ func (s *FileStorage) DeleteUserURLs(
 	}
 	err = s.save(&urls)
 	if err != nil {
-		return fmt.Errorf("error saving batch infile: %w", err)
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
+
+func (s *FileStorage) DeleteHard(ctx context.Context) error {
+	err := s.MemoryStorage.DeleteHard(ctx)
+	if err != nil {
+		return errors.New("unable to delete hard")
+	}
+	var urls = make([]ShortenURL, 0, len(s.MemoryStorage.urls))
+	for _, value := range s.MemoryStorage.urls {
+		lenItems := len(urls) + 1
+		urls = append(urls, ShortenURL{
+			ctx.Value(helpers.UserID),
+			value.OriginalURL,
+			value.ShortURL,
+			lenItems,
+			value.IsDeleted,
+		})
+	}
+	err = s.save(&urls)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
 	}
 	return nil
 }
