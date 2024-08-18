@@ -10,13 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// GzipResponseWriter структура ответа при сжатии данных
+// GzipResponseWriter структура ответа при сжатии данных.
 type GzipResponseWriter struct {
 	Writer io.Writer
 	http.ResponseWriter
 }
 
-// Write переопределяеми метод Write пакета gzip
+// Write переопределяеми метод Write пакета gzip.
 func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	size, err := w.Writer.Write(b)
 	if err != nil {

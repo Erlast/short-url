@@ -22,7 +22,7 @@ type (
 	}
 )
 
-// Write переопределяем метод Write запроса
+// Write переопределяем метод Write запроса.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	if err != nil {
@@ -35,13 +35,13 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, nil
 }
 
-// WriteHeader переопределяем метод WriteHeader запроса
+// WriteHeader переопределяем метод WriteHeader запроса.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
 
-// Header переопредеялем метод Header запроса
+// Header переопредеялем метод Header запроса.
 func (r *loggingResponseWriter) Header() http.Header {
 	return r.ResponseWriter.Header()
 }

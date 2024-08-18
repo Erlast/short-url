@@ -8,19 +8,19 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/config"
 )
 
-// Output структура ответа при массовом сохранении ссылок
+// Output структура ответа при массовом сохранении ссылок.
 type Output struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
-// Incoming структура тела запроса при массовом сохранении ссылок
+// Incoming структура тела запроса при массовом сохранении ссылок.
 type Incoming struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
-// ShortenURL структура ссылки
+// ShortenURL структура ссылки.
 type ShortenURL struct {
 	UserID      any    `json:"user_id"`
 	OriginalURL string `json:"original_url"`
@@ -29,13 +29,13 @@ type ShortenURL struct {
 	IsDeleted   bool   `json:"is_deleted"`
 }
 
-// UserURLs структура пользловательской ссылки
+// UserURLs структура пользловательской ссылки.
 type UserURLs struct {
 	OriginalURL string `json:"original_url"`
 	ShortURL    string `json:"short_url"`
 }
 
-// URLStorage интерфейс хранилища
+// URLStorage интерфейс хранилища.
 type URLStorage interface {
 	SaveURL(ctx context.Context, originalURL string) (string, error)
 	GetByID(ctx context.Context, id string) (string, error)
