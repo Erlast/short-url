@@ -7,6 +7,7 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
+// Cfg структура конфигурации
 type Cfg struct {
 	FlagRunAddr string
 	FlagBaseURL string
@@ -23,11 +24,12 @@ type envCfg struct {
 	SecretKey   string `env:"SECRET_KEY"`
 }
 
-const defaultRunAddr = ":8080"
-const defaultBaseURL = "http://localhost:8080"
-const defaultFileStoragePath = "/tmp/short-url-db.json"
-const secretKey = "supersecretkey"
+const defaultRunAddr = ":8080"                          // defaultRunAddr порт по умолчанию
+const defaultBaseURL = "http://localhost:8080"          // defaultBaseURL базовый URL приложения
+const defaultFileStoragePath = "/tmp/short-url-db.json" // defaultFileStoragePath файл хранилище
+const secretKey = "supersecretkey"                      // secretKey  секретный ключ для формирования jwt токенов
 
+// ParseFlags функция разбора заданных параметров приложения
 func ParseFlags() *Cfg {
 	config := &Cfg{
 		FlagRunAddr: defaultRunAddr,

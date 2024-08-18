@@ -43,6 +43,7 @@ func (r *loggingResponseWriter) Header() http.Header {
 	return r.ResponseWriter.Header()
 }
 
+// WithLogging функция логгирования http запросов
 func WithLogging(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

@@ -20,6 +20,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
+// PgStorage хранилище БД postgres
 type PgStorage struct {
 	Conn *pgxpool.Pool
 }
@@ -27,6 +28,7 @@ type PgStorage struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
+// NewPgStorage инициализации хранилища postgres
 func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
@@ -40,6 +42,15 @@ func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 	return &PgStorage{Conn: conn}, nil
 }
 
+// SaveURL сохраняет оригинальный URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - originalURL: оригинальный URL
+//
+// Возвращает
+//   - string: сокращенный URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) SaveURL(ctx context.Context, originalURL string) (string, error) {
 	var shortURL string
 	for range 3 {
@@ -75,6 +86,15 @@ func (pgs *PgStorage) SaveURL(ctx context.Context, originalURL string) (string, 
 	return shortURL, nil
 }
 
+// GetByID получение оригинального URL по короткой ссылке
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - id: короткая ссылка
+//
+// Возвращает
+//   - string: оригинальный URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 	var originalURL string
 	var isDeleted bool
@@ -96,6 +116,14 @@ func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 	return originalURL, nil
 }
 
+// IsExists проверка существования URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - key: сокращенный URL
+//
+// Возвращает
+//   - bool: true - сслыка существует, false - ссылка не существует
 func (pgs *PgStorage) IsExists(ctx context.Context, key string) bool {
 	var count int
 	err := pgs.Conn.QueryRow(ctx, "SELECT count(original) FROM short_urls WHERE short = $1", key).Scan(&count)
@@ -105,6 +133,13 @@ func (pgs *PgStorage) IsExists(ctx context.Context, key string) bool {
 	return count != 0
 }
 
+// CheckPing проверка соединения с хранилищем
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (pgs *PgStorage) CheckPing(ctx context.Context) error {
 	err := pgs.Conn.Ping(ctx)
 	if err != nil {
@@ -113,6 +148,16 @@ func (pgs *PgStorage) CheckPing(ctx context.Context) error {
 	return nil
 }
 
+// LoadURLs сохраняет список оригинальных URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - incoming[]: список оригинальных URL
+//   - baseURL: базовый URL приложения
+//
+// Возвращает
+//   - output[]: список сокращенных URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
@@ -199,6 +244,15 @@ func (pgs *PgStorage) LoadURLs(
 	return result, nil
 }
 
+// GetUserURLs получение списка оригинальных URL пользователя
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - baseURL: базовый URL приложения
+//
+// Возвращает
+//   - userURLs[]: список сокращенных URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserURLs, error) {
 	var result []UserURLs
 
@@ -226,6 +280,15 @@ func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserUR
 	return result, nil
 }
 
+// DeleteUserURLs удаляет спислок URL по переданному списку
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - listDeleted[]: список URL на удаление
+//   - logger: логгер
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (pgs *PgStorage) DeleteUserURLs(
 	ctx context.Context,
 	listDeleted []string,
@@ -269,6 +332,13 @@ func (pgs *PgStorage) DeleteUserURLs(
 	return nil
 }
 
+// DeleteHard удаляет URL которые ранее были мягко удалены
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (pgs *PgStorage) DeleteHard(ctx context.Context) error {
 	query := `DELETE FROM short_urls WHERE is_deleted=true`
 	_, err := pgs.Conn.Exec(ctx, query)
@@ -278,6 +348,7 @@ func (pgs *PgStorage) DeleteHard(ctx context.Context) error {
 	return nil
 }
 
+// Close закрытие соединения с хранилищем
 func (pgs *PgStorage) Close() error {
 	if pgs.Conn == nil {
 		return nil

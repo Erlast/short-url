@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// NewLogger инициализация нового логгера
 func NewLogger(level string) (*zap.SugaredLogger, error) {
 	cfg := zap.NewProductionConfig()
 

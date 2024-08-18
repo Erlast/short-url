@@ -13,6 +13,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
+// NewRouter функция инициализации роутов
 func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 

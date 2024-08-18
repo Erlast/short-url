@@ -13,16 +13,18 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
-const perm600 = 0o600
-const perm777 = 0o777
-const errMsg = "error saving batch infile: %w"
+const perm600 = 0o600                          // perm600 код доступа к файлу
+const perm777 = 0o777                          // perm777 код доступа к файлу (полный доступ)
+const errMsg = "error saving batch infile: %w" // errMsg шаблон ошибки сохранения списка ссылок в файл
 
+// FileStorage хранилище данных в файле
 type FileStorage struct {
 	*MemoryStorage
 	logger      *zap.SugaredLogger
 	fileStorage string
 }
 
+// NewFileStorage инициализация файлового хранилища
 func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLogger) (*FileStorage, error) {
 	storage, err := loadStorageFromFile(
 		&FileStorage{
@@ -38,6 +40,15 @@ func NewFileStorage(_ context.Context, fileStorage string, logger *zap.SugaredLo
 	return storage, nil
 }
 
+// SaveURL сохраняет оригинальный URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - originalURL: оригинальный URL
+//
+// Возвращает
+//   - string: сокращенный URL
+//   - error: ошибка выполнения
 func (s *FileStorage) SaveURL(ctx context.Context, originalURL string) (string, error) {
 	shortURL, err := s.MemoryStorage.SaveURL(ctx, originalURL)
 	if err != nil {
@@ -56,6 +67,16 @@ func (s *FileStorage) SaveURL(ctx context.Context, originalURL string) (string, 
 	return shortURL, nil
 }
 
+// LoadURLs сохраняет спислок оригинальных URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - incoming[]: список оригинальных URL
+//   - baseURL: базовый URL приложения
+//
+// Возвращает
+//   - output[]: список сокращенных URL
+//   - error: ошибка выполнения
 func (s *FileStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
@@ -91,6 +112,15 @@ func (s *FileStorage) LoadURLs(
 	return outputs, nil
 }
 
+// DeleteUserURLs удаляет спислок URL по переданному списку
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - listDeleted[]: список URL на удаление
+//   - logger: логгер
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (s *FileStorage) DeleteUserURLs(
 	ctx context.Context,
 	listDeleted []string,
@@ -118,6 +148,13 @@ func (s *FileStorage) DeleteUserURLs(
 	return nil
 }
 
+// DeleteHard удаляет URL которые ранее были мягко удалены
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (s *FileStorage) DeleteHard(ctx context.Context) error {
 	err := s.MemoryStorage.DeleteHard(ctx)
 	if err != nil {
