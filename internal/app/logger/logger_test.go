@@ -17,7 +17,7 @@ func TestNewLogger(t *testing.T) {
 		logger.Debug("This is a debug message")
 
 		if err := logger.Sync(); err != nil && !errors.Is(err, syscall.ENOTTY) {
-			t.Fatal(err)
+			t.Fatal("Enable to sync logger")
 		}
 	})
 
