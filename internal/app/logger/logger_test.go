@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"errors"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,8 +16,7 @@ func TestNewLogger(t *testing.T) {
 
 		logger.Debug("This is a debug message")
 
-		err = logger.Sync()
-		if err != nil {
+		if err := logger.Sync(); err != nil && !errors.Is(err, syscall.ENOTTY) {
 			t.Fatal(err)
 		}
 	})
