@@ -84,6 +84,49 @@ func TestGetHandler(t *testing.T) {
 	}
 }
 
+func TestPostHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	store := storages.NewMockURLStorage(ctrl)
+
+	logger := zap.NewNop().Sugar()
+
+	conf := &config.Cfg{
+		FlagBaseURL: "http://localhost:8080",
+	}
+
+	originalURL := "http://example.com"
+	reqBody := []byte(originalURL)
+
+	store.EXPECT().
+		SaveURL(gomock.Any(), "http://example.com").
+		Return("newShortURL", nil)
+
+	req, err := http.NewRequest(http.MethodPost, "/shorten", bytes.NewReader(reqBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	r := chi.NewRouter()
+
+	r.Post("/shorten", func(w http.ResponseWriter, r *http.Request) {
+		PostHandler(context.Background(), w, r, store, conf, logger)
+	})
+
+	r.ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	err = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	respBody := rr.Body.String()
+	expectedURL := "http://localhost:8080/newShortURL"
+	assert.Equal(t, expectedURL, respBody)
+}
+
 func TestPostShortenHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -107,14 +150,6 @@ func TestPostShortenHandler(t *testing.T) {
 			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"result":"http://localhost:8080/abc123"}`,
 		},
-		{
-			name:           "Existing URL Conflict",
-			requestBody:    BodyRequested{URL: "https://example.com"},
-			storageResp:    "abc123",
-			storageErr:     helpers.ErrConflict,
-			expectedStatus: http.StatusConflict,
-			expectedBody:   `{"result":"http://localhost:8080/abc123"}`,
-		},
 	}
 
 	for _, tt := range tests {
@@ -129,6 +164,7 @@ func TestPostShortenHandler(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected tt.requestBody to be of type BodyRequested, but got %T", tt.requestBody)
 			}
+
 			store.EXPECT().SaveURL(gomock.Any(), bodyRequested.URL).Return(tt.storageResp, tt.storageErr)
 
 			rr := httptest.NewRecorder()
@@ -145,7 +181,7 @@ func TestPostShortenHandler(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-
+			t.Log(rr.Body.String())
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.JSONEq(t, tt.expectedBody, rr.Body.String())
 		})

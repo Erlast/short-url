@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -35,6 +36,11 @@ type BodyResponse struct {
 // Pinger интерфейс для проверки состояния хранилища Postgres.
 type Pinger interface {
 	CheckPing(ctx context.Context) error
+}
+
+// GetProbe проба.
+func GetProbe(_ context.Context, res http.ResponseWriter) {
+	res.WriteHeader(http.StatusOK)
 }
 
 // GetHandler запрос получения оригинальной ссылки по сокращенному URL.
@@ -102,8 +108,10 @@ func PostHandler(
 		}
 		return
 	}
+	fmt.Println("rr %w", err)
 
 	if err != nil {
+		fmt.Println("ffff")
 		logger.Errorf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
@@ -407,9 +415,10 @@ func generateURLAndSave(
 		var conflictErr *helpers.ConflictError
 		if errors.As(err, &conflictErr) {
 			rndString = conflictErr.ShortURL
+			return rndString, conflictErr
 		}
 
-		return rndString, helpers.ErrConflict
+		return "", errors.New("failed to save URL")
 	}
 	return rndString, nil
 }

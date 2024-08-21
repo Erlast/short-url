@@ -27,6 +27,10 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 		return middlewares.GzipMiddleware(h, logger)
 	})
 
+	r.Get("/", func(res http.ResponseWriter, req *http.Request) {
+		handlers.GetProbe(ctx, res)
+	})
+
 	r.Get("/{id}", func(res http.ResponseWriter, req *http.Request) {
 		handlers.GetHandler(ctx, res, req, store)
 	})
