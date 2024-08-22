@@ -87,10 +87,8 @@ func PostHandler(
 
 	setHeader(res, "text/plain")
 
-	// генерируем короткую ссылку и сохраняем
 	rndURL, err := generateURLAndSave(req.Context(), storage, string(u))
 
-	// обработка нестандратного поведения при сохранении, когда такой URL уже сущетсвует
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
 		str, err := url.JoinPath(conf.FlagBaseURL, "/", rndURL)
