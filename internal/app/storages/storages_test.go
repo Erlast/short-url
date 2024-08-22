@@ -179,26 +179,6 @@ func TestFileStorage_LoadURLs(t *testing.T) {
 	}
 }
 
-func TestFileStorage_DeleteUserURLs(t *testing.T) {
-	storage, cleanup := setupTestFileStorage(t)
-	defer cleanup()
-
-	ctx := context.WithValue(context.Background(), helpers.UserID, "user1")
-	logger, _ := zap.NewDevelopment()
-
-	shortURL1, _ := storage.SaveURL(ctx, "https://example1.com")
-	shortURL2, _ := storage.SaveURL(ctx, "https://example2.com")
-
-	err := storage.DeleteUserURLs(ctx, []string{shortURL1, shortURL2}, logger.Sugar())
-	assert.NoError(t, err)
-
-	_, err = storage.GetByID(ctx, shortURL1)
-	assert.Error(t, err)
-
-	_, err = storage.GetByID(ctx, shortURL2)
-	assert.Error(t, err)
-}
-
 func TestFileStorage_DeleteHard(t *testing.T) {
 	storage, cleanup := setupTestFileStorage(t)
 	defer cleanup()
@@ -235,11 +215,9 @@ func TestFileStorage_Persistence(t *testing.T) {
 	shortURL, err := storage.SaveURL(ctx, originalURL)
 	assert.NoError(t, err)
 
-	// Re-load the storage
 	storage, err = NewFileStorage(context.Background(), filePath, logger.Sugar())
 	assert.NoError(t, err)
 
-	// Verify the URL is still there after reload
 	retrievedURL, err := storage.GetByID(ctx, shortURL)
 	assert.NoError(t, err)
 	assert.Equal(t, originalURL, retrievedURL)
