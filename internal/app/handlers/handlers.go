@@ -413,10 +413,10 @@ func generateURLAndSave(
 		var conflictErr *helpers.ConflictError
 		if errors.As(err, &conflictErr) {
 			rndString = conflictErr.ShortURL
-			return rndString, conflictErr
+			return rndString, helpers.ErrConflict
 		}
 
-		return rndString, errors.New("failed to save URL")
+		return "", errors.New("failed to save URL")
 	}
 	return rndString, nil
 }
