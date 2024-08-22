@@ -416,7 +416,7 @@ func generateURLAndSave(
 			return rndString, conflictErr
 		}
 
-		return "", errors.New("failed to save URL")
+		return rndString, errors.New("failed to save URL")
 	}
 	return rndString, nil
 }
