@@ -181,7 +181,7 @@ func TestPostShortenHandler(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Log(rr.Body.String())
+
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.JSONEq(t, tt.expectedBody, rr.Body.String())
 		})

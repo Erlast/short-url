@@ -8,14 +8,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/helpers"
+	"github.com/google/uuid"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
 func TestCheckAuthMiddleware(t *testing.T) {
-	logger := zap.NewNop().Sugar() // Используем заглушку логгера для тестов
+	logger := zap.NewNop().Sugar()
 
-	// Следующий обработчик, который будет вызван, если CheckAuthMiddleware пройдёт
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("Success"))
@@ -32,12 +35,12 @@ func TestCheckAuthMiddleware(t *testing.T) {
 		handler.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
-		assert.Equal(t, "Access denied\n", resp.Body.String()) // assuming accessDeniedErr = "access denied"
+		assert.Equal(t, "Access denied\n", resp.Body.String())
 	})
 
 	t.Run("Error getting token from cookie", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-		req.Header.Set("Authorization", "someToken") // Устанавливаем заголовок Authorization
+		req.Header.Set("Authorization", "someToken")
 		resp := httptest.NewRecorder()
 
 		handler := CheckAuthMiddleware(nextHandler, logger)
@@ -48,21 +51,21 @@ func TestCheckAuthMiddleware(t *testing.T) {
 
 	t.Run("Authorization header does not match token cookie", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-		req.Header.Set("Authorization", "someToken")                        // Устанавливаем заголовок Authorization
-		req.AddCookie(&http.Cookie{Name: "token", Value: "differentToken"}) // Устанавливаем несовпадающий токен
+		req.Header.Set("Authorization", "someToken")
+		req.AddCookie(&http.Cookie{Name: "token", Value: "differentToken"})
 		resp := httptest.NewRecorder()
 
 		handler := CheckAuthMiddleware(nextHandler, logger)
 		handler.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
-		assert.Equal(t, "Access denied\n", resp.Body.String()) // assuming accessDeniedErr = "access denied"
+		assert.Equal(t, "Access denied\n", resp.Body.String())
 	})
 
 	t.Run("Authorization header matches token cookie", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-		req.Header.Set("Authorization", "matchingToken")                   // Устанавливаем заголовок Authorization
-		req.AddCookie(&http.Cookie{Name: "token", Value: "matchingToken"}) // Устанавливаем совпадающий токен
+		req.Header.Set("Authorization", "matchingToken")
+		req.AddCookie(&http.Cookie{Name: "token", Value: "matchingToken"})
 		resp := httptest.NewRecorder()
 
 		handler := CheckAuthMiddleware(nextHandler, logger)
@@ -74,9 +77,8 @@ func TestCheckAuthMiddleware(t *testing.T) {
 }
 
 func TestGzipMiddleware(t *testing.T) {
-	logger := zap.NewNop().Sugar() // Используем заглушку логгера для тестов
+	logger := zap.NewNop().Sugar()
 
-	// Обработчик, который будет вызван, если GzipMiddleware пропустит запрос
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, err := w.Write([]byte(`{"message": "Hello, World!"}`))
@@ -141,5 +143,50 @@ func TestGzipMiddleware(t *testing.T) {
 		assert.NotContains(t, resp.Header().Get("Content-Encoding"), "gzip")
 		assert.Equal(t, `{"message": "Hello, World!"}`, resp.Body.String())
 		assert.Equal(t, http.StatusOK, resp.Code)
+	})
+}
+
+func TestAuthMiddleware(t *testing.T) {
+	logger := zap.NewExample().Sugar()
+	cfg := &config.Cfg{}
+
+	t.Run("No token cookie, valid new token", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID, ok := r.Context().Value(helpers.UserID).(string)
+			assert.True(t, ok)
+			_, err := uuid.Parse(userID)
+			assert.NoError(t, err, "userID should be a valid UUID")
+			w.WriteHeader(http.StatusOK)
+		})
+
+		middleware := AuthMiddleware(handler, logger, cfg)
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		rr := httptest.NewRecorder()
+
+		middleware.ServeHTTP(rr, req)
+
+		resp := rr.Result()
+		err := resp.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.NotEmpty(t, rr.Header().Get("Authorization"))
+		assert.NotEmpty(t, resp.Cookies())
+	})
+
+	t.Run("Invalid token", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+		middleware := AuthMiddleware(handler, logger, cfg)
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req.AddCookie(&http.Cookie{Name: "token", Value: "invalid_token"})
+		resp := httptest.NewRecorder()
+
+		middleware.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 }
