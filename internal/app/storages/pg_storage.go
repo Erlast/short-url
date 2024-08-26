@@ -20,13 +20,15 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
 
+// PgStorage хранилище БД postgres.
 type PgStorage struct {
-	db *pgxpool.Pool
+	Conn *pgxpool.Pool
 }
 
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
+// NewPgStorage инициализации хранилища postgres.
 func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
@@ -37,40 +39,66 @@ func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
 	}
 
-	go deleteSoftDeletedRecords(ctx, conn)
-
-	return &PgStorage{db: conn}, nil
+	return &PgStorage{Conn: conn}, nil
 }
 
-func (pgs *PgStorage) SaveURL(ctx context.Context, id string, originalURL string) error {
+// SaveURL сохраняет оригинальный URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - originalURL: оригинальный URL
+//
+// Возвращает
+//   - string: сокращенный URL
+//   - error: ошибка выполнения
+func (pgs *PgStorage) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	var shortURL string
+	for range 3 {
+		rndString := helpers.RandomString(helpers.LenString)
+
+		if !pgs.IsExists(ctx, rndString) {
+			shortURL = rndString
+			continue
+		}
+		return "", errors.New("failed to generate short url")
+	}
 	sqlString := "INSERT INTO short_urls(short, original, user_id, is_deleted) VALUES ($1, $2, $3, $4)"
-	_, err := pgs.db.Exec(ctx, sqlString, id, originalURL, ctx.Value(helpers.UserID), false)
+	_, err := pgs.Conn.Exec(ctx, sqlString, shortURL, originalURL, ctx.Value(helpers.UserID), false)
 
 	if err != nil {
 		var pgsErr *pgconn.PgError
 		if errors.As(err, &pgsErr) && pgsErr.Code == pgerrcode.UniqueViolation {
 			var existingShortURL string
-			err = pgs.db.QueryRow(ctx, `
+			err = pgs.Conn.QueryRow(ctx, `
                 SELECT short FROM short_urls WHERE original = $1
             `, originalURL).Scan(&existingShortURL)
 
 			if err != nil {
-				return fmt.Errorf("falied to get short url: %w", err)
+				return "", fmt.Errorf("falied to get short url: %w", err)
 			}
-			return &helpers.ConflictError{
+			return "", &helpers.ConflictError{
 				ShortURL: existingShortURL,
 				Err:      err,
 			}
 		}
-		return fmt.Errorf("unable to save url: %w", err)
+		return "", fmt.Errorf("unable to save url: %w", err)
 	}
-	return nil
+	return shortURL, nil
 }
 
+// GetByID получение оригинального URL по короткой ссылке
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - id: короткая ссылка
+//
+// Возвращает
+//   - string: оригинальный URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 	var originalURL string
 	var isDeleted bool
-	err := pgs.db.QueryRow(ctx, "SELECT original, is_deleted FROM short_urls WHERE short = $1", id).Scan(
+	err := pgs.Conn.QueryRow(ctx, "SELECT original, is_deleted FROM short_urls WHERE short = $1", id).Scan(
 		&originalURL,
 		&isDeleted,
 	)
@@ -88,23 +116,48 @@ func (pgs *PgStorage) GetByID(ctx context.Context, id string) (string, error) {
 	return originalURL, nil
 }
 
+// IsExists проверка существования URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - key: сокращенный URL
+//
+// Возвращает
+//   - bool: true - сслыка существует, false - ссылка не существует
 func (pgs *PgStorage) IsExists(ctx context.Context, key string) bool {
 	var count int
-	err := pgs.db.QueryRow(ctx, "SELECT count(original) FROM short_urls WHERE short = $1", key).Scan(&count)
+	err := pgs.Conn.QueryRow(ctx, "SELECT count(original) FROM short_urls WHERE short = $1", key).Scan(&count)
 	if err != nil {
 		_ = fmt.Errorf("failed to get query: %w", err)
 	}
 	return count != 0
 }
 
+// CheckPing проверка соединения с хранилищем
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (pgs *PgStorage) CheckPing(ctx context.Context) error {
-	err := pgs.db.Ping(ctx)
+	err := pgs.Conn.Ping(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to ping db: %w", err)
 	}
 	return nil
 }
 
+// LoadURLs сохраняет список оригинальных URL
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - incoming[]: список оригинальных URL
+//   - baseURL: базовый URL приложения
+//
+// Возвращает
+//   - output[]: список сокращенных URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) LoadURLs(
 	ctx context.Context,
 	incoming []Incoming,
@@ -137,7 +190,7 @@ func (pgs *PgStorage) LoadURLs(
 		batch.Queue(stmt, args)
 	}
 
-	tx, err := pgs.db.Begin(ctx)
+	tx, err := pgs.Conn.Begin(ctx)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -191,11 +244,20 @@ func (pgs *PgStorage) LoadURLs(
 	return result, nil
 }
 
+// GetUserURLs получение списка оригинальных URL пользователя
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - baseURL: базовый URL приложения
+//
+// Возвращает
+//   - userURLs[]: список сокращенных URL
+//   - error: ошибка выполнения
 func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserURLs, error) {
 	var result []UserURLs
 
 	sqlSring := "SELECT short, original FROM short_urls WHERE user_id = $1 and is_deleted=false"
-	rows, err := pgs.db.Query(ctx, sqlSring, ctx.Value(helpers.UserID))
+	rows, err := pgs.Conn.Query(ctx, sqlSring, ctx.Value(helpers.UserID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user URLs: %w", err)
 	}
@@ -218,6 +280,15 @@ func (pgs *PgStorage) GetUserURLs(ctx context.Context, baseURL string) ([]UserUR
 	return result, nil
 }
 
+// DeleteUserURLs удаляет спислок URL по переданному списку
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//   - listDeleted[]: список URL на удаление
+//   - logger: логгер
+//
+// Возвращает
+//   - error: ошибка выполнения
 func (pgs *PgStorage) DeleteUserURLs(
 	ctx context.Context,
 	listDeleted []string,
@@ -232,7 +303,7 @@ func (pgs *PgStorage) DeleteUserURLs(
 		)
 	}
 
-	tx, err := pgs.db.Begin(ctx)
+	tx, err := pgs.Conn.Begin(ctx)
 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -261,12 +332,29 @@ func (pgs *PgStorage) DeleteUserURLs(
 	return nil
 }
 
+// DeleteHard удаляет URL которые ранее были мягко удалены
+//
+// Аргументы
+//   - ctx: контектс выполнения
+//
+// Возвращает
+//   - error: ошибка выполнения
+func (pgs *PgStorage) DeleteHard(ctx context.Context) error {
+	query := `DELETE FROM short_urls WHERE is_deleted=true`
+	_, err := pgs.Conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("ошибка при удалении мягко удалённых записей: %w", err)
+	}
+	return nil
+}
+
+// Close закрытие соединения с хранилищем.
 func (pgs *PgStorage) Close() error {
-	if pgs.db == nil {
+	if pgs.Conn == nil {
 		return nil
 	}
 
-	pgs.db.Close()
+	pgs.Conn.Close()
 
 	return nil
 }

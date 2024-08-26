@@ -10,11 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// GzipResponseWriter структура ответа при сжатии данных.
 type GzipResponseWriter struct {
 	Writer io.Writer
 	http.ResponseWriter
 }
 
+// Write переопределяеми метод Write пакета gzip.
 func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	size, err := w.Writer.Write(b)
 	if err != nil {
@@ -23,6 +25,7 @@ func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	return size, nil
 }
 
+// GzipMiddleware функция сжатия данных запроса.
 func GzipMiddleware(h http.Handler, logger *zap.SugaredLogger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		contentEncoding := req.Header.Get("Content-Encoding")

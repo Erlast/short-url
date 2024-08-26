@@ -13,6 +13,7 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
+// NewRouter функция инициализации роутов.
 func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -24,6 +25,10 @@ func NewRouter(ctx context.Context, store storages.URLStorage, conf *config.Cfg,
 	})
 	r.Use(func(h http.Handler) http.Handler {
 		return middlewares.GzipMiddleware(h, logger)
+	})
+
+	r.Get("/", func(res http.ResponseWriter, req *http.Request) {
+		handlers.GetProbe(ctx, res)
 	})
 
 	r.Get("/{id}", func(res http.ResponseWriter, req *http.Request) {

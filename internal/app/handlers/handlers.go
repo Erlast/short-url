@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,24 +18,36 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
-const marshalErrorTmp = "failed to marshal result: %v"
-const readBodyErrorTmp = "failed to read the request body: %v"
+const marshalErrorTmp = "failed to marshal result: %v"         // marshalErrorTmp шаблон ошибки парсинга
+const readBodyErrorTmp = "failed to read the request body: %v" // readBodyErrorTmp шаблон ошибки чтения тела запроса
 
+// BodyRequested тело запроса на формирования короткой ссылки.
 type BodyRequested struct {
+	// URL - url
 	URL string `json:"url"`
 }
 
+// BodyResponse тело ответа с короткой сслыкой.
 type BodyResponse struct {
+	// ShortURL = короткая ссылка
 	ShortURL string `json:"result"`
 }
 
+// Pinger интерфейс для проверки состояния хранилища Postgres.
 type Pinger interface {
 	CheckPing(ctx context.Context) error
 }
 
+// GetProbe проба.
+func GetProbe(_ context.Context, res http.ResponseWriter) {
+	res.WriteHeader(http.StatusOK)
+}
+
+// GetHandler запрос получения оригинальной ссылки по сокращенному URL.
 func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, storage storages.URLStorage) {
 	id := chi.URLParam(req, "id")
 
+	// Получаем оригинальную ссылку из хранилища
 	originalURL, err := storage.GetByID(req.Context(), id)
 
 	if err != nil {
@@ -50,6 +63,7 @@ func GetHandler(_ context.Context, res http.ResponseWriter, req *http.Request, s
 	http.Redirect(res, req, originalURL, http.StatusTemporaryRedirect)
 }
 
+// PostHandler запрос на создание короткой ссылки для URL, Content-type: text/plain.
 func PostHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -73,7 +87,7 @@ func PostHandler(
 
 	setHeader(res, "text/plain")
 
-	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, string(u))
+	rndURL, err := generateURLAndSave(req.Context(), storage, string(u))
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -92,8 +106,10 @@ func PostHandler(
 		}
 		return
 	}
+	fmt.Println("rr %w", err)
 
 	if err != nil {
+		fmt.Println("ffff")
 		logger.Errorf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return
@@ -117,6 +133,7 @@ func PostHandler(
 	}
 }
 
+// PostShortenHandler получение короткой ссылки для URL, тело в виде JSON.
 func PostShortenHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -150,7 +167,7 @@ func PostShortenHandler(
 
 	setHeader(res, "application/json")
 
-	rndURL, err := generateURLAndSave(req.Context(), helpers.LenString, storage, bodyReq.URL)
+	rndURL, err := generateURLAndSave(req.Context(), storage, bodyReq.URL)
 
 	if errors.Is(err, helpers.ErrConflict) {
 		res.WriteHeader(http.StatusConflict)
@@ -218,6 +235,7 @@ func PostShortenHandler(
 	}
 }
 
+// GetPingHandler проверка подключения к хранилищу.
 func GetPingHandler(
 	ctx context.Context,
 	res http.ResponseWriter,
@@ -241,6 +259,7 @@ func GetPingHandler(
 	res.WriteHeader(http.StatusOK)
 }
 
+// BatchShortenHandler запрос на массовое сохранение списка ссылок.
 func BatchShortenHandler(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -273,6 +292,7 @@ func BatchShortenHandler(
 	}
 	setHeader(res, "application/json")
 
+	// сохраняем полученные данные в хранилище
 	result, err := storage.LoadURLs(req.Context(), bodyReq, conf.FlagBaseURL)
 
 	if err != nil {
@@ -303,6 +323,7 @@ func BatchShortenHandler(
 	}
 }
 
+// GetUserUrls запрос на получение списка сохраненных пользователем URL.
 func GetUserUrls(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -331,6 +352,7 @@ func GetUserUrls(
 		return
 	}
 
+	logger.Infof("Marshalled data: %s", string(data))
 	setHeader(res, "application/json")
 
 	res.WriteHeader(http.StatusOK)
@@ -342,6 +364,7 @@ func GetUserUrls(
 	}
 }
 
+// DeleteUserUrls запрос на мягкое удаление ссылок пользователя.
 func DeleteUserUrls(
 	_ context.Context,
 	res http.ResponseWriter,
@@ -379,37 +402,21 @@ func setHeader(res http.ResponseWriter, value string) {
 	res.Header().Set("Content-Type", value)
 }
 
-func generateRandom(ctx context.Context, ln int, storage storages.URLStorage) (string, error) {
-	for range 3 {
-		rndString := helpers.RandomString(ln)
-
-		if !storage.IsExists(ctx, rndString) {
-			return rndString, nil
-		}
-	}
-	return "", errors.New("failed to generate a unique string")
-}
-
 func generateURLAndSave(
 	ctx context.Context,
-	ln int,
 	storage storages.URLStorage,
 	originalURL string,
 ) (string, error) {
-	rndString, err := generateRandom(ctx, ln, storage)
-
-	if err != nil {
-		return "", errors.New("failed to generate a random string")
-	}
-	err = storage.SaveURL(ctx, rndString, originalURL)
+	rndString, err := storage.SaveURL(ctx, originalURL)
 
 	if err != nil {
 		var conflictErr *helpers.ConflictError
 		if errors.As(err, &conflictErr) {
 			rndString = conflictErr.ShortURL
+			return rndString, helpers.ErrConflict
 		}
 
-		return rndString, helpers.ErrConflict
+		return "", errors.New("failed to save URL")
 	}
 	return rndString, nil
 }
