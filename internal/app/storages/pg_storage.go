@@ -25,15 +25,20 @@ type PgStorage struct {
 	Conn *pgxpool.Pool
 }
 
+// MigrationRunner интерефейс раннер миграций.
 type MigrationRunner interface {
 	RunMigrations(dsn string) error
 }
 
+// PoolInitializer интерфейс инициализации подключения к БД.
 type PoolInitializer interface {
 	InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error)
 }
 
+// PgStorageInitializer инициализатор подключения к БД.
 type PgStorageInitializer struct{}
+
+// PgStorageRunner раннер миграций.
 type PgStorageRunner struct{}
 
 //go:embed migrations/*.sql
@@ -377,6 +382,7 @@ func (pgs *PgStorage) Close() error {
 	return nil
 }
 
+// InitPool инициализация подулючения к БД Postgres.
 func (pi *PgStorageInitializer) InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -393,6 +399,7 @@ func (pi *PgStorageInitializer) InitPool(ctx context.Context, dsn string) (*pgxp
 	return pool, nil
 }
 
+// RunMigrations запуск миграций.
 func (mr *PgStorageRunner) RunMigrations(dsn string) error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
