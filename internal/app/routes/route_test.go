@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/Erlast/short-url.git/internal/app/handlers"
-	"github.com/golang/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Erlast/short-url.git/internal/app/handlers"
+	"github.com/golang/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -37,14 +38,14 @@ func TestNewRouter(t *testing.T) {
 
 	r := NewRouter(ctx, store, conf, logger)
 
-	//tests := []struct {
+	// tests := []struct {
 	//	name           string
 	//	method         string
 	//	id             string
 	//	url            string
 	//	expectedStatus int
 	//	expectedBody   string
-	//}{
+	// }{
 
 	//{
 	//	name:           "DELETE /api/user/urls",
@@ -52,12 +53,12 @@ func TestNewRouter(t *testing.T) {
 	//	url:            "/api/user/urls",
 	//	expectedStatus: http.StatusOK,
 	//	expectedBody:   "User URLs Deleted", // Настроить в зависимости от вашего обработчика
-	//},
+	// },
 	//}
 
-	//for _, tt := range tests {
+	// for _, tt := range tests {
 	t.Run("GET /", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, req)
 
@@ -70,7 +71,7 @@ func TestNewRouter(t *testing.T) {
 
 	t.Run("GET /test-id", func(t *testing.T) {
 		store.EXPECT().GetByID(gomock.Any(), "test-id").Return("someresp", nil)
-		req := httptest.NewRequest(http.MethodGet, "/test-id", nil)
+		req := httptest.NewRequest(http.MethodGet, "/test-id", http.NoBody)
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, req)
 
@@ -137,7 +138,7 @@ func TestNewRouter(t *testing.T) {
 		assert.Contains(t, logs, `status`)
 	})
 
-	//t.Run("GET /api/user/urls", func(t *testing.T) {
+	// t.Run("GET /api/user/urls", func(t *testing.T) {
 	//	expectedResult := []storages.UserURLs{
 	//		{ShortURL: "http://localhost:8080/abc123", OriginalURL: "https://example.com"},
 	//	}
@@ -161,7 +162,7 @@ func TestNewRouter(t *testing.T) {
 	//
 	//	logs := logBuf.String()
 	//	assert.Contains(t, logs, `status`)
-	//})
+	// })
 
 	t.Run("DELETE /api/user/urls", func(t *testing.T) {
 		urlsToDelete := []string{"short-url-1", "short-url-2"}
@@ -181,5 +182,4 @@ func TestNewRouter(t *testing.T) {
 		logs := logBuf.String()
 		assert.Contains(t, logs, `status`)
 	})
-
 }

@@ -27,7 +27,7 @@ func TestNewStorage(t *testing.T) {
 		//		DatabaseDSN: "mock_dsn",
 		//	},
 		//	expected: &PgStorage{},
-		//},
+		// },
 		{
 			name: "File storage",
 			cfg: &config.Cfg{

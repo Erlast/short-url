@@ -9,7 +9,7 @@ import (
 )
 
 // timeSleep интервал запуска компонента.
-var timeSleep = 24 * time.Millisecond
+var timeSleep = 24 * time.Hour
 
 // DeleteSoftDeletedRecords функция удаления записей из харанилища которые ранее были мягко удалены.
 func DeleteSoftDeletedRecords(ctx context.Context, store storages.URLStorage) {

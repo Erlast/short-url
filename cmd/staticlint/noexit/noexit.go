@@ -1,7 +1,9 @@
 package noexit
 
 import (
+	"errors"
 	"go/ast"
+
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 )
@@ -21,7 +23,7 @@ var Analyzer = &analysis.Analyzer{
 // run функция для запукска анализатора.
 func run(pass *analysis.Pass) (interface{}, error) {
 	if pass.Pkg.Name() != "main" {
-		return nil, nil
+		return nil, errors.New("not a main package")
 	}
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
@@ -40,8 +42,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return true
 			})
 		}
-
 	}
 
-	return nil, nil
+	return "", nil
 }

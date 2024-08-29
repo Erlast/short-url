@@ -6,14 +6,13 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"net/url"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgerrcode"
-	_ "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -41,11 +40,15 @@ type PgStorageRunner struct{}
 var migrationsDir embed.FS
 
 // NewPgStorage инициализации хранилища postgres.
-func NewPgStorage(ctx context.Context, dsn string, runner MigrationRunner, initializer PoolInitializer) (*PgStorage, error) {
+func NewPgStorage(
+	ctx context.Context,
+	dsn string,
+	runner MigrationRunner,
+	initializer PoolInitializer,
+) (*PgStorage, error) {
 	err := runner.RunMigrations(dsn)
 	fmt.Println("Error running migrations:", err)
 	if err != nil {
-
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
 	conn, err := initializer.InitPool(ctx, dsn)

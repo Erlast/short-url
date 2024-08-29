@@ -3,11 +3,12 @@ package middlewares
 import (
 	"bytes"
 	"compress/gzip"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap/zapcore"
 
 	"github.com/Erlast/short-url.git/internal/app/config"
 	"github.com/Erlast/short-url.git/internal/app/helpers"
@@ -230,10 +231,13 @@ func TestWithLogging(t *testing.T) {
 
 			handler := WithLogging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.responseBody))
+				_, err := w.Write([]byte(tt.responseBody))
+				if err != nil {
+					return
+				}
 			}), logger)
 
-			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			handler.ServeHTTP(rec, req)

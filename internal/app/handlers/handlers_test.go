@@ -309,7 +309,6 @@ func TestPostShortenHandler_EmptyBody(t *testing.T) {
 	}
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
-
 }
 
 func TestBatchShortenHandler(t *testing.T) {
