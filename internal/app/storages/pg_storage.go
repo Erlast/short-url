@@ -6,13 +6,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"net/url"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -25,16 +26,30 @@ type PgStorage struct {
 	Conn *pgxpool.Pool
 }
 
+type MigrationRunner interface {
+	RunMigrations(dsn string) error
+}
+
+type PoolInitializer interface {
+	InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error)
+}
+
+type PgStorageInitializer struct{}
+type PgStorageRunner struct{}
+
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
 // NewPgStorage инициализации хранилища postgres.
-func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
-	if err := runMigrations(dsn); err != nil {
+func NewPgStorage(ctx context.Context, dsn string, runner MigrationRunner, initializer PoolInitializer) (*PgStorage, error) {
+	err := runner.RunMigrations(dsn)
+	fmt.Println("Error running migrations:", err)
+	if err != nil {
+
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
-	conn, err := initPool(ctx, dsn)
-
+	conn, err := initializer.InitPool(ctx, dsn)
+	fmt.Println("err", err)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
 	}
@@ -359,7 +374,7 @@ func (pgs *PgStorage) Close() error {
 	return nil
 }
 
-func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+func (pi *PgStorageInitializer) InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the DSN: %w", err)
@@ -375,7 +390,7 @@ func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func runMigrations(dsn string) error {
+func (mr *PgStorageRunner) RunMigrations(dsn string) error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
 		return fmt.Errorf("failed to return an iofs driver: %w", err)

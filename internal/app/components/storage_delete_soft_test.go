@@ -1,6 +1,6 @@
 package components
 
-// Func TestDeleteSoftDeletedRecords(t *testing.T) {
+//Func TestDeleteSoftDeletedRecords(t *testing.T) {
 //	ctrl := gomock.NewController(t)
 //	defer ctrl.Finish()
 //	store := storages.NewMockURLStorage(ctrl)
@@ -25,8 +25,8 @@ package components
 //
 //	assert.True(t, true, "DeleteSoftDeletedRecords завершилась корректно")
 //}
-//
-// func TestDeleteSoftDeletedRecords_Error(t *testing.T) {
+
+//func TestDeleteSoftDeletedRecords_Error(t *testing.T) {
 //	ctrl := gomock.NewController(t)
 //	defer ctrl.Finish()
 //	store := storages.NewMockURLStorage(ctrl)
@@ -50,4 +50,4 @@ package components
 //	<-done
 //
 //	assert.True(t, true, "DeleteSoftDeletedRecords завершилась корректно")
-// }.
+//}

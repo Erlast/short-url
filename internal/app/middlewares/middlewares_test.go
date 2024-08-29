@@ -3,6 +3,7 @@ package middlewares
 import (
 	"bytes"
 	"compress/gzip"
+	"go.uber.org/zap/zapcore"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -189,4 +190,57 @@ func TestAuthMiddleware(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
+}
+
+func TestWithLogging(t *testing.T) {
+	tests := []struct {
+		name           string
+		statusCode     int
+		responseBody   string
+		expectedStatus int
+		expectedSize   int
+	}{
+		{
+			name:           "200 OK",
+			statusCode:     http.StatusOK,
+			responseBody:   "Hello, world!",
+			expectedStatus: http.StatusOK,
+			expectedSize:   len("Hello, world!"),
+		},
+		{
+			name:           "404 Not Found",
+			statusCode:     http.StatusNotFound,
+			responseBody:   "Page not found",
+			expectedStatus: http.StatusNotFound,
+			expectedSize:   len("Page not found"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+
+			// Настраиваем zap для записи логов в буфер.
+			core := zapcore.NewCore(
+				zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+				zapcore.AddSync(&logBuf),
+				zap.InfoLevel,
+			)
+			logger := zap.New(core).Sugar()
+
+			handler := WithLogging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+				w.Write([]byte(tt.responseBody))
+			}), logger)
+
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			rec := httptest.NewRecorder()
+
+			handler.ServeHTTP(rec, req)
+
+			// Проверяем статус и размер ответа.
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+			assert.Equal(t, tt.responseBody, rec.Body.String())
+		})
+	}
 }
