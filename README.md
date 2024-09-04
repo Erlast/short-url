@@ -42,5 +42,17 @@ go test -v -coverpkg=./... -coverprofile=profile.cov ./...
 ```
 go tool cover -func profile.cov
 ```
-
+## Запуск кастомного линтера
+Переходим в папку.
+``````
+cd .\cmd\staticlint\
+``````
+Запускаем билд.
+``````
+go build -o customlint.exe
+``````
+Запускаем линтер.
+``````
+.\customlint.exe -config staticlint.json .\...
+``````
 

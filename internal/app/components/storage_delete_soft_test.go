@@ -24,9 +24,9 @@ package components
 //	<-done
 //
 //	assert.True(t, true, "DeleteSoftDeletedRecords завершилась корректно")
-//}
-//
-// func TestDeleteSoftDeletedRecords_Error(t *testing.T) {
+// }.
+
+// Func TestDeleteSoftDeletedRecords_Error(t *testing.T) {
 //	ctrl := gomock.NewController(t)
 //	defer ctrl.Finish()
 //	store := storages.NewMockURLStorage(ctrl)

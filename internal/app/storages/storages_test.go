@@ -5,10 +5,51 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Erlast/short-url.git/internal/app/helpers"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+
+	"github.com/Erlast/short-url.git/internal/app/config"
+	"github.com/Erlast/short-url.git/internal/app/helpers"
 )
+
+func TestNewStorage(t *testing.T) {
+	ctx := context.Background()
+	logger := zap.NewNop().Sugar()
+
+	tests := []struct {
+		name     string
+		cfg      *config.Cfg
+		expected URLStorage
+	}{
+		//{
+		//	name: "PostgreSQL storage",
+		//	cfg: &config.Cfg{
+		//		DatabaseDSN: "mock_dsn",
+		//	},
+		//	expected: &PgStorage{},
+		// },
+		{
+			name: "File storage",
+			cfg: &config.Cfg{
+				FileStorage: "/tmp/file_storage_path.json",
+			},
+			expected: &FileStorage{},
+		},
+		{
+			name:     "Memory storage",
+			cfg:      &config.Cfg{},
+			expected: &MemoryStorage{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage, err := NewStorage(ctx, tt.cfg, logger)
+			assert.NoError(t, err)
+			assert.IsType(t, tt.expected, storage)
+		})
+	}
+}
 
 func TestMemoryStorage_SaveURL(t *testing.T) {
 	ctx := context.WithValue(context.Background(), helpers.UserID, "user1")
