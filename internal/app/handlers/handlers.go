@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -106,10 +105,8 @@ func PostHandler(
 		}
 		return
 	}
-	fmt.Println("rr %w", err)
 
 	if err != nil {
-		fmt.Println("ffff")
 		logger.Errorf("can't generate url: %v", err)
 		http.Error(res, "", http.StatusInternalServerError)
 		return

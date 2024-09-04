@@ -25,16 +25,39 @@ type PgStorage struct {
 	Conn *pgxpool.Pool
 }
 
+// MigrationRunner интерефейс раннер миграций.
+type MigrationRunner interface {
+	RunMigrations(dsn string) error
+}
+
+// PoolInitializer интерфейс инициализации подключения к БД.
+type PoolInitializer interface {
+	InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error)
+}
+
+// PgStorageInitializer инициализатор подключения к БД.
+type PgStorageInitializer struct{}
+
+// PgStorageRunner раннер миграций.
+type PgStorageRunner struct{}
+
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
 // NewPgStorage инициализации хранилища postgres.
-func NewPgStorage(ctx context.Context, dsn string) (*PgStorage, error) {
-	if err := runMigrations(dsn); err != nil {
+func NewPgStorage(
+	ctx context.Context,
+	dsn string,
+	runner MigrationRunner,
+	initializer PoolInitializer,
+) (*PgStorage, error) {
+	err := runner.RunMigrations(dsn)
+	fmt.Println("Error running migrations:", err)
+	if err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
-	conn, err := initPool(ctx, dsn)
-
+	conn, err := initializer.InitPool(ctx, dsn)
+	fmt.Println("err", err)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect database: %w", err)
 	}
@@ -359,7 +382,8 @@ func (pgs *PgStorage) Close() error {
 	return nil
 }
 
-func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+// InitPool инициализация подулючения к БД Postgres.
+func (pi *PgStorageInitializer) InitPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the DSN: %w", err)
@@ -375,7 +399,8 @@ func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func runMigrations(dsn string) error {
+// RunMigrations запуск миграций.
+func (mr *PgStorageRunner) RunMigrations(dsn string) error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
 		return fmt.Errorf("failed to return an iofs driver: %w", err)

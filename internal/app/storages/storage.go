@@ -50,7 +50,9 @@ type URLStorage interface {
 func NewStorage(ctx context.Context, cfg *config.Cfg, logger *zap.SugaredLogger) (URLStorage, error) {
 	switch {
 	case cfg.DatabaseDSN != "":
-		return NewPgStorage(ctx, cfg.DatabaseDSN)
+		migrationRunner := &PgStorageRunner{}
+		poolInitializer := &PgStorageInitializer{}
+		return NewPgStorage(ctx, cfg.DatabaseDSN, migrationRunner, poolInitializer)
 	case cfg.FileStorage != "":
 		return NewFileStorage(ctx, cfg.FileStorage, logger)
 	default:

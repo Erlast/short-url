@@ -19,6 +19,34 @@ import (
 	"go.uber.org/zap"
 )
 
+type errorReader struct{}
+
+func (r *errorReader) Read(p []byte) (int, error) {
+	return 0, errors.New("read error")
+}
+
+func (r *errorReader) Close() error {
+	return nil
+}
+
+func TestGetProbe(t *testing.T) {
+	// Создаем новый ResponseRecorder для захвата ответа
+	rr := httptest.NewRecorder()
+
+	// Вызываем функцию GetProbe с контекстом и ResponseRecorder
+	GetProbe(context.Background(), rr)
+
+	// Проверяем, что код статуса ответа равен http.StatusOK
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("unexpected status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Проверяем, что тело ответа пустое (функция GetProbe не записывает в тело ответа)
+	if rr.Body.String() != "" {
+		t.Errorf("unexpected response body: got %v want empty", rr.Body.String())
+	}
+}
+
 func TestGetHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -127,6 +155,71 @@ func TestPostHandler(t *testing.T) {
 	assert.Equal(t, expectedURL, respBody)
 }
 
+func TestPostHandler_EmptyBody(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	store := storages.NewMockURLStorage(ctrl)
+
+	logger := zap.NewNop().Sugar()
+
+	conf := &config.Cfg{
+		FlagBaseURL: "http://localhost:8080",
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "/shorten", http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	r := chi.NewRouter()
+
+	r.Post("/shorten", func(w http.ResponseWriter, r *http.Request) {
+		PostHandler(context.Background(), w, r, store, conf, logger)
+	})
+
+	r.ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	err = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestPostHandler_InvalidBody(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	store := storages.NewMockURLStorage(ctrl)
+
+	logger := zap.NewNop().Sugar()
+
+	conf := &config.Cfg{
+		FlagBaseURL: "http://localhost:8080",
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "/shorten", &errorReader{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	r := chi.NewRouter()
+
+	r.Post("/shorten", func(w http.ResponseWriter, r *http.Request) {
+		PostHandler(context.Background(), w, r, store, conf, logger)
+	})
+
+	r.ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	err = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
 func TestPostShortenHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -186,6 +279,36 @@ func TestPostShortenHandler(t *testing.T) {
 			assert.JSONEq(t, tt.expectedBody, rr.Body.String())
 		})
 	}
+}
+
+func TestPostShortenHandler_EmptyBody(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	store := storages.NewMockURLStorage(ctrl)
+	conf := &config.Cfg{FlagBaseURL: "http://localhost:8080"}
+	logger := zap.NewExample().Sugar()
+
+	req, err := http.NewRequest(http.MethodPost, "/api/shorten", http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	r := chi.NewRouter()
+
+	r.Post("/api/shorten", func(w http.ResponseWriter, r *http.Request) {
+		PostShortenHandler(context.Background(), w, r, store, conf, logger)
+	})
+
+	r.ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	err = resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
 func TestBatchShortenHandler(t *testing.T) {

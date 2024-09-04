@@ -13,7 +13,15 @@ import (
 	"github.com/Erlast/short-url.git/internal/app/storages"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 // main настройка приложения.
+//
+//go:generate go run ./../version/version.go
 func main() {
 	// Вспомогательная функция для профилирования
 	go func() {
@@ -46,6 +54,9 @@ func main() {
 
 	// Вывод информации в лог о старте сервера
 	newLogger.Info("Running server address ", conf.FlagRunAddr)
+	newLogger.Infof("Build version: %s\n", buildVersion)
+	newLogger.Infof("Build date: %s\n", buildDate)
+	newLogger.Infof("Build commit: %s\n", buildCommit)
 
 	// Запуск сервера
 	err = http.ListenAndServe(conf.FlagRunAddr, r)
